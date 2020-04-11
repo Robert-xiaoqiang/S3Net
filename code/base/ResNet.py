@@ -105,7 +105,7 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, zero_init_residual=False):
         super(ResNet, self).__init__()
         self.inplanes = 64
-        self.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -220,7 +220,7 @@ def resnet50(pretrained=False, **kwargs):
         model_dict = model.state_dict()
         # 1. filter out unnecessary keys
         pretrained_dict = {k: v for k, v in pretrained_dict.items()
-                           if k in model_dict and k != 'conv1.weight' }
+                           if k in model_dict }# and k != 'conv1.weight' }
         # 2. overwrite entries in the existing state dict
         model_dict.update(pretrained_dict)
         # 3. load the new state dict

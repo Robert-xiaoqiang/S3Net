@@ -3,10 +3,10 @@ from datetime import datetime
 
 __all__ = ['proj_root', 'arg_config', 'path_config']
 
-from network.MINet import MINet_VGG16, MINet_Res50
+from network.MINet import MINet_RGBD_Res50
 # code root directory
 proj_root = os.path.dirname(os.path.dirname(__file__))
-datasets_root = '/home/xqwang/projects/saliency/MINet-RGBD/datasets/'
+datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
 
 njud_path = os.path.join(datasets_root, 'NJUD', 'test_data')
 nlpr_path = os.path.join(datasets_root, 'NLPR', 'test_data')
@@ -21,20 +21,16 @@ test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'MINet_Res50',  # 决定使用哪一个网络
-    'MINet_VGG16': {
-        'net': MINet_VGG16,
-        'exp_name': 'MINet_VGG16'
+    'NET': 'MINet_RGBD_Res50',  # 决定使用哪一个网络
+    'MINet_RGBD_Res50': {
+        'net': MINet_RGBD_Res50,
+        'exp_name': 'MINet_RGBD_Res50'
     },
-    'MINet_Res50': {
-        'net': MINet_Res50,
-        'exp_name': 'MINet_Res50'
-    },
-    
+     
     'resume': False,  # 是否需要恢复模型
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 180,  # 训练周期, 0: directly test model
+    'epoch_num': 20,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
