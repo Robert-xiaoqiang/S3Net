@@ -27,10 +27,10 @@ arg_config = {
         'exp_name': 'MINet_RGBD_Res50'
     },
      
-    'resume': False,  # 是否需要恢复模型
+    'resume': True,  # 是否需要恢复模型
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 20,  # 训练周期, 0: directly test model
+    'epoch_num': 120,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
