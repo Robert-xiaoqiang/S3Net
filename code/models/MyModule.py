@@ -61,10 +61,10 @@ class conv_2nV1_rgbd(nn.Module):
         self.bnh_0 = nn.BatchNorm2d(mid_c)
         self.bnl_0 = nn.BatchNorm2d(mid_c)
 
-        self.h2h_depth_0 = nn.Conv2d(in_hc, mid_c, 3, 1, 1)
-        self.l2l_depth_0 = nn.Conv2d(in_lc, mid_c, 3, 1, 1)
-        self.bnh_depth_0 = nn.BatchNorm2d(mid_c)
-        self.bnl_depth_0 = nn.BatchNorm2d(mid_c)        
+        # self.h2h_depth_0 = nn.Conv2d(in_hc, mid_c, 3, 1, 1)
+        # self.l2l_depth_0 = nn.Conv2d(in_lc, mid_c, 3, 1, 1)
+        # self.bnh_depth_0 = nn.BatchNorm2d(mid_c)
+        # self.bnl_depth_0 = nn.BatchNorm2d(mid_c)        
         
         # stage 1
         self.h2h_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
@@ -74,18 +74,18 @@ class conv_2nV1_rgbd(nn.Module):
         self.bnl_1 = nn.BatchNorm2d(mid_c)
         self.bnh_1 = nn.BatchNorm2d(mid_c)
 
-        self.h2h_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
-        self.h2l_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
-        self.l2h_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
-        self.l2l_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
-        self.bnl_depth_1 = nn.BatchNorm2d(mid_c)
-        self.bnh_depth_1 = nn.BatchNorm2d(mid_c)
+        # self.h2h_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.h2l_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.l2h_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.l2l_depth_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.bnl_depth_1 = nn.BatchNorm2d(mid_c)
+        # self.bnh_depth_1 = nn.BatchNorm2d(mid_c)
 
-        self.h2h_d2rgb_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
-        self.l2l_d2rgb_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.h2h_d2rgb_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.l2l_d2rgb_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
 
-        self.h2h_rgb2d_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
-        self.l2l_rgb2d_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.h2h_rgb2d_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        # self.l2l_rgb2d_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
         
         if self.main == 0:
             # stage 2
@@ -145,8 +145,8 @@ class conv_2nV1_rgbd(nn.Module):
         h = self.relu(self.bnh_0(self.h2h_0(in_h)))
         l = self.relu(self.bnl_0(self.l2l_0(in_l)))
 
-        h_depth = self.relu(self.bnh_depth_0(self.h2h_depth_0(in_h_depth)))
-        l_depth = self.relu(self.bnl_depth_0(self.l2l_depth_0(in_l_depth)))
+        # h_depth = self.relu(self.bnh_depth_0(self.h2h_depth_0(in_h_depth)))
+        # l_depth = self.relu(self.bnl_depth_0(self.l2l_depth_0(in_l_depth)))
         
         # stage 1
         h2h = self.h2h_1(h)
@@ -154,66 +154,66 @@ class conv_2nV1_rgbd(nn.Module):
         l2l = self.l2l_1(l)
         l2h = self.l2h_1(self.l2h_up(l))
 
-        h2h_depth = self.h2h_depth_1(h_depth)
-        h2l_depth = self.h2l_depth_1(self.h2l_pool(h_depth))
-        l2l_depth = self.l2l_depth_1(l_depth)
-        l2h_depth = self.l2h_depth_1(self.l2h_up(l_depth))
+        # h2h_depth = self.h2h_depth_1(h_depth)
+        # h2l_depth = self.h2l_depth_1(self.h2l_pool(h_depth))
+        # l2l_depth = self.l2l_depth_1(l_depth)
+        # l2h_depth = self.l2h_depth_1(self.l2h_up(l_depth))
 
-        h2h_d2rgb = self.h2h_d2rgb_1(h_depth)
-        l2l_d2rgb = self.l2l_d2rgb_1(l_depth)
+        # h2h_d2rgb = self.h2h_d2rgb_1(h_depth)
+        # l2l_d2rgb = self.l2l_d2rgb_1(l_depth)
 
-        h2h_rgb2d = self.h2h_rgb2d_1(h)
-        l2l_rgb2d = self.l2l_rgb2d_1(l)   
+        # h2h_rgb2d = self.h2h_rgb2d_1(h)
+        # l2l_rgb2d = self.l2l_rgb2d_1(l)   
 
-        h = self.relu(self.bnh_1(h2h + l2h + h2h_d2rgb))
-        l = self.relu(self.bnl_1(l2l + h2l + l2l_d2rgb))
+        h = self.relu(self.bnh_1(h2h + l2h))# + h2h_d2rgb))
+        l = self.relu(self.bnl_1(l2l + h2l))# + l2l_d2rgb))
 
-        h_depth = self.relu(self.bnh_depth_1(h2h_depth + l2h_depth + h2h_rgb2d))
-        l_depth = self.relu(self.bnl_depth_1(l2l_depth + h2l_depth + l2l_rgb2d))
+        # h_depth = self.relu(self.bnh_depth_1(h2h_depth + l2h_depth + h2h_rgb2d))
+        # l_depth = self.relu(self.bnl_depth_1(l2l_depth + h2l_depth + l2l_rgb2d))
 
         if self.main == 0:
             # stage 2
             h2h = self.h2h_2(h)
             l2h = self.l2h_2(self.l2h_up(l))
 
-            h2h_depth = self.h2h_depth_2(h_depth)
-            l2h_depth = self.l2h_depth_2(self.l2h_up(l_depth))
+            # h2h_depth = self.h2h_depth_2(h_depth)
+            # l2h_depth = self.l2h_depth_2(self.l2h_up(l_depth))
             
-            h2h_d2rgb = self.h2h_d2rgb_2(h_depth)
-            h2h_rgb2d = self.h2h_rgb2d_2(h)
+            # h2h_d2rgb = self.h2h_d2rgb_2(h_depth)
+            # h2h_rgb2d = self.h2h_rgb2d_2(h)
 
-            h_fuse = self.relu(self.bnh_2(h2h + l2h + h2h_d2rgb))
-            h_fuse_depth = self.relu(self.bnh_depth_2(h2h_depth + l2h_depth + h2h_rgb2d))
+            h_fuse = self.relu(self.bnh_2(h2h + l2h))# + h2h_d2rgb))
+            # h_fuse_depth = self.relu(self.bnh_depth_2(h2h_depth + l2h_depth + h2h_rgb2d))
             
             # stage 3
             out = self.relu(
                 self.bnh_3(self.h2h_3(h_fuse)) + self.identity(in_h))
-            out_depth = self.relu(
-                self.bnh_depth_3(self.h2h_depth_3(h_fuse_depth)) + self.identity_depth(in_h_depth))
+            # out_depth = self.relu(
+            #     self.bnh_depth_3(self.h2h_depth_3(h_fuse_depth)) + self.identity_depth(in_h_depth))
             # 这里使用的不是in_h(_depth)，而是h(_depth)
         elif self.main == 1:
             # stage 2
             h2l = self.h2l_2(self.h2l_pool(h))
             l2l = self.l2l_2(l)
 
-            h2l_depth = self.h2l_depth_2(self.h2l_pool(h_depth))
-            l2l_depth = self.l2l_depth_2(l_depth)
+            # h2l_depth = self.h2l_depth_2(self.h2l_pool(h_depth))
+            # l2l_depth = self.l2l_depth_2(l_depth)
 
-            l2l_d2rgb = self.l2l_d2rgb_2(l_depth)
-            l2l_rgb2d = self.l2l_rgb2d_2(l)
+            # l2l_d2rgb = self.l2l_d2rgb_2(l_depth)
+            # l2l_rgb2d = self.l2l_rgb2d_2(l)
 
-            l_fuse = self.relu(self.bnl_2(h2l + l2l + l2l_d2rgb))
-            l_fuse_depth = self.relu(self.bnl_depth_2(h2l_depth + l2l_depth + l2l_rgb2d))
+            l_fuse = self.relu(self.bnl_2(h2l + l2l))# + l2l_d2rgb))
+            # l_fuse_depth = self.relu(self.bnl_depth_2(h2l_depth + l2l_depth + l2l_rgb2d))
             
             # stage 3
             out = self.relu(
                 self.bnl_3(self.l2l_3(l_fuse)) + self.identity(in_l))
-            out_depth = self.relu(
-                self.bnl_depth_3(self.l2l_depth_3(l_fuse_depth)) + self.identity_depth(in_l_depth))
-        else:
+        #     out_depth = self.relu(
+        #         self.bnl_depth_3(self.l2l_depth_3(l_fuse_depth)) + self.identity_depth(in_l_depth))
+        # else:
             raise NotImplementedError
-        out = torch.cat([ out, out_depth ], dim = 1)
-        out = self.out_conv(out)
+        # out = torch.cat([ out, out_depth ], dim = 1)
+        # out = self.out_conv(out)
         return out
 
 class conv_3nV1_rgbd(nn.Module):
@@ -371,16 +371,194 @@ class conv_3nV1_rgbd(nn.Module):
         out = self.out_conv(out)
         return out
 
+
+
+class conv_2nV1_rgbd_dev(nn.Module):
+    def __init__(self, in_hc=64, in_lc=256, out_c=64, main=0):
+        super().__init__()
+        self.main = main
+        mid_c = 2 * min(in_hc, in_lc)
+        in_hc *= 2
+        in_lc *= 2
+        out_c *= 2
+        
+        self.relu = nn.ReLU(True)
+        self.h2l_pool = nn.AvgPool2d((2, 2), stride=2)
+        self.l2h_up = nn.Upsample(scale_factor=2, mode='nearest')
+        
+        # stage 0
+        self.h2h_0 = nn.Conv2d(in_hc, mid_c, 3, 1, 1)
+        self.l2l_0 = nn.Conv2d(in_lc, mid_c, 3, 1, 1)
+        self.bnh_0 = nn.BatchNorm2d(mid_c)
+        self.bnl_0 = nn.BatchNorm2d(mid_c)
+        
+        # stage 1
+        self.h2h_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.h2l_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.l2h_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.l2l_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.bnl_1 = nn.BatchNorm2d(mid_c)
+        self.bnh_1 = nn.BatchNorm2d(mid_c)
+        
+        if self.main == 0:
+            # stage 2
+            self.h2h_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+            self.l2h_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+            self.bnh_2 = nn.BatchNorm2d(mid_c)
+            
+            # stage 3
+            self.h2h_3 = nn.Conv2d(mid_c, out_c, 3, 1, 1)
+            self.bnh_3 = nn.BatchNorm2d(out_c)
+            
+            self.identity = nn.Conv2d(in_hc, out_c, 1)
+        
+        elif self.main == 1:
+            # stage 2
+            self.h2l_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+            self.l2l_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+            self.bnl_2 = nn.BatchNorm2d(mid_c)
+            
+            # stage 3
+            self.l2l_3 = nn.Conv2d(mid_c, out_c, 3, 1, 1)
+            self.bnl_3 = nn.BatchNorm2d(out_c)
+            
+            self.identity = nn.Conv2d(in_lc, out_c, 1)
+        
+        else:
+            raise NotImplementedError
+    
+    def forward(self, in_h, in_l, in_h_depth, in_l_depth):
+        in_h = torch.cat([ in_h, in_h_depth ], dim = 1)
+        in_l = torch.cat([ in_l, in_l_depth ], dim = 1)
+
+        # stage 0
+        h = self.relu(self.bnh_0(self.h2h_0(in_h)))
+        l = self.relu(self.bnl_0(self.l2l_0(in_l)))
+        
+        # stage 1
+        h2h = self.h2h_1(h)
+        h2l = self.h2l_1(self.h2l_pool(h))
+        l2l = self.l2l_1(l)
+        l2h = self.l2h_1(self.l2h_up(l))
+        h = self.relu(self.bnh_1(h2h + l2h))
+        l = self.relu(self.bnl_1(l2l + h2l))
+        
+        if self.main == 0:
+            # stage 2
+            h2h = self.h2h_2(h)
+            l2h = self.l2h_2(self.l2h_up(l))
+            h_fuse = self.relu(self.bnh_2(h2h + l2h))
+            
+            # stage 3
+            out = self.relu(
+                self.bnh_3(self.h2h_3(h_fuse)) + self.identity(in_h))
+            # 这里使用的不是in_h，而是h
+        elif self.main == 1:
+            # stage 2
+            h2l = self.h2l_2(self.h2l_pool(h))
+            l2l = self.l2l_2(l)
+            l_fuse = self.relu(self.bnl_2(h2l + l2l))
+            
+            # stage 3
+            out = self.relu(
+                self.bnl_3(self.l2l_3(l_fuse)) + self.identity(in_l))
+        else:
+            raise NotImplementedError
+        
+        return out
+
+
+class conv_3nV1_rgbd_dev(nn.Module):
+    def __init__(self, in_hc=64, in_mc=256, in_lc=512, out_c=64):
+        super().__init__()
+        self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
+        self.downsample = nn.AvgPool2d((2, 2), stride=2)
+        
+        mid_c = 2 * min(in_hc, in_mc, in_lc)
+        in_hc *= 2
+        in_mc *= 2
+        in_lc *= 2
+        out_c *= 2
+        self.relu = nn.ReLU(True)
+        
+        # stage 0
+        self.h2h_0 = nn.Conv2d(in_hc, mid_c, 3, 1, 1)
+        self.m2m_0 = nn.Conv2d(in_mc, mid_c, 3, 1, 1)
+        self.l2l_0 = nn.Conv2d(in_lc, mid_c, 3, 1, 1)
+        self.bnh_0 = nn.BatchNorm2d(mid_c)
+        self.bnm_0 = nn.BatchNorm2d(mid_c)
+        self.bnl_0 = nn.BatchNorm2d(mid_c)
+        
+        # stage 1
+        self.h2h_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.h2m_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.m2h_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.m2m_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.m2l_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.l2m_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.l2l_1 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.bnh_1 = nn.BatchNorm2d(mid_c)
+        self.bnm_1 = nn.BatchNorm2d(mid_c)
+        self.bnl_1 = nn.BatchNorm2d(mid_c)
+        
+        # stage 2
+        self.h2m_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.l2m_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.m2m_2 = nn.Conv2d(mid_c, mid_c, 3, 1, 1)
+        self.bnm_2 = nn.BatchNorm2d(mid_c)
+        
+        # stage 3
+        self.m2m_3 = nn.Conv2d(mid_c, out_c, 3, 1, 1)
+        self.bnm_3 = nn.BatchNorm2d(out_c)
+        
+        self.identity = nn.Conv2d(in_mc, out_c, 1)
+    
+    def forward(self, in_h, in_m, in_l, in_h_depth, in_m_depth, in_l_depth):
+        in_h = torch.cat([ in_h, in_h_depth ], dim = 1)
+        in_m = torch.cat([ in_m, in_m_depth ], dim = 1)
+        in_l = torch.cat([ in_l, in_l_depth ], dim = 1)
+        # stage 0
+        h = self.relu(self.bnh_0(self.h2h_0(in_h)))
+        m = self.relu(self.bnm_0(self.m2m_0(in_m)))
+        l = self.relu(self.bnl_0(self.l2l_0(in_l)))
+        
+        # stage 1
+        h2h = self.h2h_1(h)
+        m2h = self.m2h_1(self.upsample(m))
+        
+        h2m = self.h2m_1(self.downsample(h))
+        m2m = self.m2m_1(m)
+        l2m = self.l2m_1(self.upsample(l))
+        
+        m2l = self.m2l_1(self.downsample(m))
+        l2l = self.l2l_1(l)
+        
+        h = self.relu(self.bnh_1(h2h + m2h))
+        m = self.relu(self.bnm_1(h2m + m2m + l2m))
+        l = self.relu(self.bnl_1(m2l + l2l))
+        
+        # stage 2
+        h2m = self.h2m_2(self.downsample(h))
+        m2m = self.m2m_2(m)
+        l2m = self.l2m_2(self.upsample(l))
+        m = self.relu(self.bnm_2(h2m + m2m + l2m))
+        
+        # stage 3
+        out = self.relu(self.bnm_3(self.m2m_3(m)) + self.identity(in_m))
+        return out
+
+
+
 class AIMRGBD(nn.Module):
     def __init__(self, iC_list, oC_list):
         super().__init__()
         ic0, ic1, ic2, ic3, ic4 = iC_list
         oc0, oc1, oc2, oc3, oc4 = oC_list
-        self.conv0 = conv_2nV1_rgbd(in_hc=ic0, in_lc=ic1, out_c=oc0, main=0)
-        self.conv1 = conv_3nV1_rgbd(in_hc=ic0, in_mc=ic1, in_lc=ic2, out_c=oc1)
-        self.conv2 = conv_3nV1_rgbd(in_hc=ic1, in_mc=ic2, in_lc=ic3, out_c=oc2)
-        self.conv3 = conv_3nV1_rgbd(in_hc=ic2, in_mc=ic3, in_lc=ic4, out_c=oc3)
-        self.conv4 = conv_2nV1_rgbd(in_hc=ic3, in_lc=ic4, out_c=oc4, main=1)
+        self.conv0 = conv_2nV1_rgbd_dev(in_hc=ic0, in_lc=ic1, out_c=oc0, main=0)
+        self.conv1 = conv_3nV1_rgbd_dev(in_hc=ic0, in_mc=ic1, in_lc=ic2, out_c=oc1)
+        self.conv2 = conv_3nV1_rgbd_dev(in_hc=ic1, in_mc=ic2, in_lc=ic3, out_c=oc2)
+        self.conv3 = conv_3nV1_rgbd_dev(in_hc=ic2, in_mc=ic3, in_lc=ic4, out_c=oc3)
+        self.conv4 = conv_2nV1_rgbd_dev(in_hc=ic3, in_lc=ic4, out_c=oc4, main=1)
     
     def forward(self, xs, ds):
         # rgb_data_2, rgb_data_4, rgb_data_8, rgb_data_16, rgb_data_32

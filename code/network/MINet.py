@@ -20,20 +20,20 @@ class MINet_RGBD_Res50(nn.Module):
         self.trans = AIMRGBD(iC_list=(64, 256, 512, 1024, 2048),
                          oC_list=(64, 64, 64, 64, 64))
         
-        self.sim32 = SIM(64, 32)
-        self.sim16 = SIM(64, 32)
-        self.sim8 = SIM(64, 32)
-        self.sim4 = SIM(64, 32)
-        self.sim2 = SIM(64, 32)
+        self.sim32 = SIM(64 * 2, 32)
+        self.sim16 = SIM(64 * 2, 32)
+        self.sim8 = SIM(64 * 2, 32)
+        self.sim4 = SIM(64 * 2, 32)
+        self.sim2 = SIM(64 * 2, 32)
         
-        self.upconv32 = BasicConv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.upconv16 = BasicConv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.upconv8 = BasicConv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.upconv4 = BasicConv2d(64, 64, kernel_size=3, stride=1, padding=1)
-        self.upconv2 = BasicConv2d(64, 32, kernel_size=3, stride=1, padding=1)
-        self.upconv1 = BasicConv2d(32, 32, kernel_size=3, stride=1, padding=1)
+        self.upconv32 = BasicConv2d(64 * 2, 64 * 2, kernel_size=3, stride=1, padding=1)
+        self.upconv16 = BasicConv2d(64 * 2, 64 * 2, kernel_size=3, stride=1, padding=1)
+        self.upconv8 = BasicConv2d(64 * 2, 64 * 2, kernel_size=3, stride=1, padding=1)
+        self.upconv4 = BasicConv2d(64 * 2, 64 * 2, kernel_size=3, stride=1, padding=1)
+        self.upconv2 = BasicConv2d(64 * 2, 32 * 2, kernel_size=3, stride=1, padding=1)
+        self.upconv1 = BasicConv2d(32 * 2, 32 * 2, kernel_size=3, stride=1, padding=1)
         
-        self.classifier = nn.Conv2d(32, 1, 1)
+        self.classifier = nn.Conv2d(32 * 2, 1, 1)
     
     def forward(self, rgb, depth):
         rgb_data_2 = self.rgb_div_2(rgb)

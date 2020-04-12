@@ -10,20 +10,19 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
     
-    def __call__(self, img, depth, mask):
-        assert img.size == mask.size
+    def __call__(self, *args):
         for t in self.transforms:
-            img, depth, mask = t(img, depth, mask)
-        return img, depth, mask
+            args = t(*args)
+        return args
 
 
 class RandomHorizontallyFlip(object):
-    def __call__(self, img, depth, mask):
+    def __call__(self, *args):
+        ret = list(args)
         if random.random() < 0.5:
-            return img.transpose(Image.FLIP_LEFT_RIGHT), \
-                   depth.transpose(Image.FLIP_LEFT_RIGHT), \
-                   mask.transpose(Image.FLIP_LEFT_RIGHT)
-        return img, depth, mask
+            for i, arg in enumerate(args):
+                ret[i] = arg.transpose(Image.FLIP_LEFT_RIGHT)
+        return tuple(ret)
 
 
 class JointResize(object):
@@ -35,22 +34,17 @@ class JointResize(object):
         else:
             raise RuntimeError("size参数请设置为int或者tuple")
     
-    def __call__(self, img, depth, mask):
-        img = img.resize(self.size)
-        depth = depth.resize(self.size)
-        mask = mask.resize(self.size)
-        return img, depth, mask
+    def __call__(self, *args):
+        return tuple([ arg.resize(self.size) for arg in args ])
 
 
 class RandomRotate(object):
     def __init__(self, degree):
         self.degree = degree
     
-    def __call__(self, img, depth, mask):
+    def __call__(self, *args):
         rotate_degree = random.random() * 2 * self.degree - self.degree
-        return img.rotate(rotate_degree, Image.BILINEAR), \
-               depth.rotate(rotate_degree, Image.BILINEAR), \
-               mask.rotate(rotate_degree, Image.NEAREST)
+        return tuple([ x.rotate(rotate_degree, Image.BILINEAR) for x in args ])
 
 
 class RandomScaleCrop(object):
