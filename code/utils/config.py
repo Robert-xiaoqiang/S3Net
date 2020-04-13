@@ -15,8 +15,8 @@ rgbd135_path = os.path.join(datasets_root, 'RGBD135')
 stereo_path = os.path.join(datasets_root, 'STEREO')
 lfsd_path = os.path.join(datasets_root, 'LFSD')
 
-train_path = os.path.join(datasets_root, 'NJUD-NLPR', 'train_data')
-test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
+train_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'train_data')
+test_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'test_data')
 
 # 配置区域 #####################################################################
 arg_config = {
@@ -30,7 +30,7 @@ arg_config = {
     'resume': False,  # 是否需要恢复模型
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 200,  # 训练周期, 0: directly test model
+    'epoch_num': 120,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
