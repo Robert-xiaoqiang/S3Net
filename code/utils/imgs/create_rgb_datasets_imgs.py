@@ -99,7 +99,7 @@ class TestImageFolder(Dataset):
         
         img = self.test_img_trainsform(img).float()
         depth = self.test_depth_trainsform(depth).float()
-        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth)) * torch.tensor(255.0).to(torch.cuda.current_device())
+        depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth)) * torch.tensor(255.0).to(torch.cuda.current_device())
         return img, depth, mask_path, img_name
     
     def __len__(self):
@@ -159,7 +159,7 @@ class TrainImageFolder(Dataset):
         mask = self.train_mask_transform(mask)
         img = self.train_img_transform(img)
         depth = self.train_depth_transform(depth)
-        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth)) * torch.tensor(255.0).to(torch.cuda.current_device())
+        depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth)) * torch.tensor(255.0).to(torch.cuda.current_device())
         if self.use_bigt:
             mask = mask.ge(0.5).float()  # 二值化
         
