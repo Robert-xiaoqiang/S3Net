@@ -8,7 +8,7 @@ from base.VGG import Backbone_VGG16_in3
 from models.MyModule import (AIMRGBD, SIM)
 
 
-class MINet_RGBD_Res50(nn.Module):
+class SCFNet_Res50(nn.Module):
     def __init__(self):
         super().__init__()
         self.rgb_div_2, self.rgb_div_4, self.rgb_div_8, self.rgb_div_16, self.rgb_div_32 = Backbone_ResNet50_in3()

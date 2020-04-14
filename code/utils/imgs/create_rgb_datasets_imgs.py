@@ -24,9 +24,26 @@ def _get_ext(path_list):
         else:
             raise NotImplementedError
         construct_print(f"数据文件夹中包含多种扩展名，这里仅使用{ext}")
-    else:
+    elif len(ext_list) == 1:
         ext = ext_list[0]
+    else:
+        raise NotImplementedError
     return ext
+
+def _make_unlabeled_dataset(root, split):
+    img_path = os.path.join(root, split + '_images')
+    depth_path = os.path.join(root, split + '_depth')
+    
+    img_list = os.listdir(img_path)
+    depth_list = os.listdir(depth_path)
+    
+    img_ext = _get_ext(img_list)
+    depth_ext = _get_ext(depth_list)
+    
+    # relative path to main file name
+    img_list = [os.path.splitext(f)[0] for f in img_list if f.endswith(img_ext)]
+    return [ (os.path.join(img_path, img_name + img_ext), \
+              os.path.join(depth_path, img_name + depth_ext)) for img_name in img_list ]
 
 
 def _make_dataset(root, split):
@@ -128,6 +145,7 @@ class TrainImageFolder(Dataset):
             self.imgs = _make_train_dataset_from_list(root, prefix=prefix)
         else:
             raise NotImplementedError
+
         self.train_joint_transform = Compose([
             JointResize(in_size),
             RandomHorizontallyFlip(),
@@ -151,12 +169,12 @@ class TrainImageFolder(Dataset):
         if len(img.split()) != 3:
             img = img.convert('RGB')
         if len(depth.split()) == 3:
-            mask = mask.convert('L')
+            depth = depth.convert('L')
         if len(mask.split()) == 3:
             mask = mask.convert('L')
 
         img, depth, mask = self.train_joint_transform(img, depth, mask)
-        mask = self.train_mask_transform(mask).long()
+        mask = self.train_mask_transform(mask).float()
         img = self.train_img_transform(img).float()
         depth = self.train_depth_transform(depth).float()
         # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
@@ -166,10 +184,97 @@ class TrainImageFolder(Dataset):
         img_name = (img_path.split(os.sep)[-1]).split('.')[0]
         
         return img, depth, mask, img_name
-    
+
     def __len__(self):
         return len(self.imgs)
 
+class TrainMTImageFolder(Dataset):
+    def __init__(self, root, unlabeled_root, in_size, prefix, use_bigt=False):
+        self.in_size = in_size
+        self.use_bigt = use_bigt
+        if os.path.isdir(root):
+            construct_print(f"{root} is an image folder, we will train on it.")
+            self.imgs = _make_dataset(root, split = 'train')
+        elif os.path.isfile(root):
+            construct_print(f"{root} is a list of images, we will use these paths to read the "
+                            f"corresponding image")
+            self.imgs = _make_train_dataset_from_list(root, prefix=prefix)
+        else:
+            raise NotImplementedError
+        if os.path.isdir(unlabeled_root):
+            construct_print(f"{unlabeled_root} is an image folder, we will conduct MT on it.")
+            self.unlabeled_imgs = _make_unlabeled_dataset(unlabeled_root, split = 'train')
+        elif os.path.isfile(unlabeled_root):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+        self.train_joint_transform = Compose([
+            JointResize(in_size),
+            RandomHorizontallyFlip(),
+            RandomRotate(10)
+        ])
+        self.train_img_transform = transforms.Compose([
+            transforms.ColorJitter(0.1, 0.1, 0.1),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406],
+                                 [0.229, 0.224, 0.225])  # 处理的是Tensor
+        ])
+        self.train_depth_transform = transforms.ToTensor()
+        self.train_mask_transform = transforms.ToTensor()
+    
+    def __getitem__(self, index):
+        if index < len(self.imgs):
+            img_path, depth_path, mask_path = self.imgs[index]
+            
+            img = Image.open(img_path)
+            depth = Image.open(depth_path)
+            mask = Image.open(mask_path)
+            if len(img.split()) != 3:
+                img = img.convert('RGB')
+            if len(depth.split()) == 3:
+                depth = depth.convert('L')
+            if len(mask.split()) == 3:
+                mask = mask.convert('L')
+
+            img, depth, mask = self.train_joint_transform(img, depth, mask)
+            mask = self.train_mask_transform(mask).float()
+            img = self.train_img_transform(img).float()
+            depth = self.train_depth_transform(depth).float()
+            # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
+            if self.use_bigt:
+                mask = mask.ge(0.5).float()  # 二值化
+            
+            img_name = (img_path.split(os.sep)[-1]).split('.')[0]
+            
+            return img, depth, mask, img_name
+        else:
+            index -= len(self.imgs)
+            # without unlabeled_mask_path
+            unlabeled_img_path, unlabeled_depth_path = self.unlabeled_imgs[index]
+            unlabeled_img = Image.open(unlabeled_img_path)
+            unlabeled_depth = Image.open(unlabeled_depth_path)
+
+            if len(unlabeled_img.split()) != 3:
+                unlabeled_img = unlabeled_img.convert('RGB')
+            if len(unlabeled_depth.split()) == 3:
+                unlabeled_depth = unlabeled_depth.convert('L')            
+            
+            unlabeled_img, unlabeled_depth = self.train_joint_transform(unlabeled_img, unlabeled_depth)
+            unlabeled_img = self.train_img_transform(unlabeled_img).float()
+            unlabeled_depth = self.train_depth_transform(unlabeled_depth).float()
+            unlabeled_depth = (unlabeled_depth - torch.min(unlabeled_depth)) / (torch.max(unlabeled_depth) - torch.min(unlabeled_depth) + torch.tensor(1.0e-6))
+            unlabeled_mask = torch.zeros((1, self.in_size, self.in_size)).float()
+            
+            unlabeled_img_name = (unlabeled_img_path.split(os.sep)[-1]).split('.')[0]
+            
+            return unlabeled_img, unlabeled_depth, unlabeled_mask, unlabeled_img_name             
+    
+    def __len__(self):
+        return len(self.imgs) + len(self.unlabeled_imgs)
+
+    def get_primary_secondary_indices(self):
+        return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))
 
 if __name__ == '__main__':
     img_list = _make_train_dataset_from_list()
