@@ -64,7 +64,7 @@ class Solver():
             # 损失函数
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
-                self.loss_funcs.append(CEL().to(self.dev))
+                self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
     
     def total_loss(self, train_preds, train_alphas):
         loss_list = []
@@ -80,6 +80,7 @@ class Solver():
         return train_loss, loss_item_list
     
     def train(self):
+        self.net.train()
         for curr_epoch in range(self.start_epoch, self.end_epoch):
             train_loss_record = AvgMeter()
             for train_batch_id, train_data in enumerate(self.tr_loader):
@@ -115,7 +116,7 @@ class Solver():
                     tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
                     self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
                     tr_tb_out_1 = make_grid(train_preds, nrow=train_batch_size, padding=5)
-                    self.tb.add_image("trsodout", tr_tb_out_1, curr_iter)
+                    self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
                 
                 # 记录每一次迭代的数据
                 if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):

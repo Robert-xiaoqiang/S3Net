@@ -1,13 +1,15 @@
 import os
+import uuid
 from datetime import datetime
 
 __all__ = ['proj_root', 'arg_config', 'path_config']
 
-from network.MINet import MINet_RGBD_Res50
-# code root directory
+from network.SCFNet import SCFNet_Res50
+
 proj_root = os.path.dirname(os.path.dirname(__file__))
 datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
 
+unlabeled_path = os.path.join(datasets_root, 'SUN-RGBD', 'train_data')
 njud_path = os.path.join(datasets_root, 'NJUD', 'test_data')
 nlpr_path = os.path.join(datasets_root, 'NLPR', 'test_data')
 sip_path = os.path.join(datasets_root, 'SIP')
@@ -21,20 +23,21 @@ test_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'MINet_RGBD_Res50',  # 决定使用哪一个网络
-    'MINet_RGBD_Res50': {
-        'net': MINet_RGBD_Res50,
-        'exp_name': 'MINet_RGBD_Res50'
+    'NET': 'SCFNet_Res50',  # 决定使用哪一个网络
+    'SCFNet_Res50': {
+        'net': SCFNet_Res50,
+        'exp_name': 'SCFNet_Res50'
     },
-     
+    
     'resume': False,  # 是否需要恢复模型
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 120,  # 训练周期, 0: directly test model
+    'epoch_num': 150,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
     'rgb_data': {
+        'unlabeled_path': unlabeled_path,
         'tr_data_path': train_path,
         'te_data_path': test_path,
         'te_data_list': {
@@ -46,13 +49,13 @@ arg_config = {
             'lfsd': lfsd_path
         },
     },
-    'tb_update': 0,  # >0 则使用tensorboard
+    'tb_update': 10,  # >0 则使用tensorboard
     'print_freq': 10,  # >0, 保存迭代过程中的信息
     'prefix': ('.jpg', '.png'),
     # img_prefix, gt_prefix，用在使用索引文件的时候的对应的扩展名，
     
     'reduction': 'mean',  # 损失处理的方式，可选“mean”和“sum”
-    'optim': 'sgd_trick',  # 自定义部分的学习率
+    'optim': 'sgd_trick',  # sgd_trick, sgd_r3, sgd_all
     'weight_decay': 5e-4,  # 微调时设置为0.0001
     'momentum': 0.9,
     'nesterov': False,
@@ -63,10 +66,17 @@ arg_config = {
     'batch_size': 4,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
+    'gpus': [0, 1],
+
+    'is_mt': None, # set in main.py or main_mt.py
+    'labeled_batch_size': 2,
+    'ema_decay': 0.99,
+    'consistency': 0.1,
+    'consistency_rampup': 100.0
 }
 ################################################################################
 
-ckpt_path = os.path.join(os.path.dirname(proj_root), 'output')
+ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', str(uuid.uuid4().hex))
 
 pth_log_path = os.path.join(ckpt_path, arg_config[arg_config['NET']]['exp_name'])
 tb_path = os.path.join(pth_log_path, 'tb')
