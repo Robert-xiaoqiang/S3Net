@@ -29,7 +29,7 @@ arg_config = {
         'exp_name': 'SCFNet_Res50'
     },
     
-    'resume': False,  # 是否需要恢复模型
+    'resume': True,  # 是否需要恢复模型
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
     'epoch_num': 150,  # 训练周期, 0: directly test model
@@ -76,8 +76,12 @@ arg_config = {
 }
 ################################################################################
 
-ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', str(uuid.uuid4().hex))
+# summary_key = 'exp-full-channel-so-0' in output-backup directory
+summary_key = 'exp-reduce-channel-mt-0'
+# sue summary key solve other varients(supervised only or MT guiding unlabel data)
+ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
+# this only solves the problem of architecture varients
 pth_log_path = os.path.join(ckpt_path, arg_config[arg_config['NET']]['exp_name'])
 tb_path = os.path.join(pth_log_path, 'tb')
 save_path = os.path.join(pth_log_path, 'pre')

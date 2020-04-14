@@ -134,7 +134,7 @@ class Solver():
 
     def train(self):
         self.net.train()
-        self.ema_net.eval()
+        self.ema_net.train()
         for curr_epoch in range(self.start_epoch, self.end_epoch):
             train_loss_record = AvgMeter()
             for train_batch_id, train_data in enumerate(self.tr_loader):
