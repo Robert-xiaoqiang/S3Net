@@ -377,7 +377,7 @@ class conv_2nV1_rgbd_dev(nn.Module):
     def __init__(self, in_hc=64, in_lc=256, out_c=64, main=0):
         super().__init__()
         self.main = main
-        mid_c = 2 * min(in_hc, in_lc)
+        mid_c = min(in_hc, in_lc)
         in_hc *= 2
         in_lc *= 2
         out_c *= 2
@@ -474,7 +474,7 @@ class conv_3nV1_rgbd_dev(nn.Module):
         self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
         self.downsample = nn.AvgPool2d((2, 2), stride=2)
         
-        mid_c = 2 * min(in_hc, in_mc, in_lc)
+        mid_c = min(in_hc, in_mc, in_lc)
         in_hc *= 2
         in_mc *= 2
         in_lc *= 2
