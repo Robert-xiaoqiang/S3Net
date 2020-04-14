@@ -53,25 +53,24 @@ class Solver():
 
         for param in self.ema_net.parameters():
             param.detach_()
-        self.end_epoch = self.args["epoch_num"]
-        self.iter_num = self.end_epoch * len(self.tr_loader)
         self.opti = self.make_optim()
-        
-        # 损失函数
-        self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
-        if self.args['use_aux_loss']:
-            self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
-        self.mes_loss = MSELoss(reduction=self.args['reduction']).to(self.dev)
         pprint(self.args)
         
         if self.args['resume']:
             self.resume_checkpoint(load_path=self.path['final_full_net'], mode='all')
         else:
             self.start_epoch = 0
-
+        self.end_epoch = self.args["epoch_num"]
+        self.iter_num = self.end_epoch * len(self.tr_loader)
         self.only_test = self.start_epoch == self.end_epoch
+
         if not self.only_test:
             self.sche = self.make_scheduler()
+            # 损失函数
+            self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
+            if self.args['use_aux_loss']:
+                self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
+            self.mes_loss = MSELoss(reduction=self.args['reduction']).to(self.dev)
     
     def total_loss(self, train_preds, train_masks):
         loss_list = []

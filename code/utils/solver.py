@@ -54,13 +54,11 @@ class Solver():
         else:
             self.start_epoch = 0
         self.end_epoch = self.args["epoch_num"]
+        self.iter_num = self.end_epoch * len(self.tr_loader)
         self.only_test = self.start_epoch == self.end_epoch
         
         if not self.only_test:
-            self.iter_num = self.end_epoch * len(self.tr_loader)
-            # self.opti = self.make_optim()
-            self.sche = self.make_scheduler()
-            
+            self.sche = self.make_scheduler()       
             # 损失函数
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
