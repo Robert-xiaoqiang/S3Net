@@ -350,4 +350,5 @@ class Solver():
             else:
                 raise NotImplementedError
         else:
-            raise Exception(f"{load_path}路径不正常，请检查")
+            self.start_epoch = 0
+            construct_print(f'Cannot found pth in {load_path:}, then train from(test based on) scratch')
