@@ -17,8 +17,8 @@ rgbd135_path = os.path.join(datasets_root, 'RGBD135')
 stereo_path = os.path.join(datasets_root, 'STEREO')
 lfsd_path = os.path.join(datasets_root, 'LFSD')
 
-train_path = os.path.join(datasets_root, 'NJUD-NLPR', 'train_data')
-test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
+train_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'train_data')
+test_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'test_data')
 
 # 配置区域 #####################################################################
 arg_config = {
@@ -29,10 +29,10 @@ arg_config = {
         'exp_name': 'SCFNet_Res50'
     },
     
-    'resume': False,  # 是否需要恢复模型
+    'resume': True,  # 是否需要恢复模型
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 150,  # 训练周期, 0: directly test model
+    'epoch_num': 225,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
@@ -76,9 +76,10 @@ arg_config = {
 }
 ################################################################################
 
-# summary_key = 'exp-full-channel-so-0' in output-backup directory
-# summary_key = 'exp-reduce-channel-mt-0'
-summary_key = 'exp-reduce-channel-so-0'
+# summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 150 era
+# summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr-rgbd135 200 era
+# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 150 era
+summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 150 era + njud-nlpr-rgbd135 75 era
 # sue summary key solve other varients(supervised only or MT guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
