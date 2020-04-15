@@ -47,18 +47,21 @@ class Solver():
         
         self.net = self.args[self.args["NET"]]["net"]().to(self.dev)
         self.opti = self.make_optim()
+        
+        self.end_epoch = self.args["epoch_num"]
+        self.iter_num = self.end_epoch * len(self.tr_loader)
+        self.sche = self.make_scheduler()
         pprint(self.args)
         
         if self.args['resume']:
             self.resume_checkpoint(load_path=self.path['final_full_net'], mode='all')
         else:
             self.start_epoch = 0
-        self.end_epoch = self.args["epoch_num"]
-        self.iter_num = self.end_epoch * len(self.tr_loader)
         self.only_test = self.start_epoch == self.end_epoch
         
         if not self.only_test:
-            self.sche = self.make_scheduler()       
+            # Ignore UserWarning
+            self.sche.step(self.start_epoch)
             # 损失函数
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
@@ -312,6 +315,7 @@ class Solver():
             'epoch': current_epoch,
             'net_state': self.net.state_dict(),
             'opti_state': self.opti.state_dict(),
+            'sche_state': self.sche.state_dict()
         }
         torch.save(state_dict, full_net_path)
         torch.save(self.net.state_dict(), state_net_path)
@@ -334,6 +338,7 @@ class Solver():
                     self.start_epoch = checkpoint['epoch']
                     self.net.load_state_dict(checkpoint['net_state'])
                     self.opti.load_state_dict(checkpoint['opti_state'])
+                    self.sche.load_state_dict(checkpoint['sche_state'])
                     construct_print(f"Loaded '{load_path}' "
                                     f"(epoch {checkpoint['epoch']})")
                 else:
