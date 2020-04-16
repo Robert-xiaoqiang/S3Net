@@ -54,18 +54,19 @@ class Solver():
         for param in self.ema_net.parameters():
             param.detach_()
         self.opti = self.make_optim()
+        
+        self.end_epoch = self.args["epoch_num"]
+        self.iter_num = self.end_epoch * len(self.tr_loader)
+        self.sche = self.make_scheduler()
         pprint(self.args)
         
         if self.args['resume']:
             self.resume_checkpoint(load_path=self.path['final_full_net'], mode='all')
         else:
             self.start_epoch = 0
-        self.end_epoch = self.args["epoch_num"]
-        self.iter_num = self.end_epoch * len(self.tr_loader)
-        self.only_test = self.start_epoch == self.end_epoch
+        self.only_test = self.args['only_test']
 
         if not self.only_test:
-            self.sche = self.make_scheduler()
             # 损失函数
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
@@ -132,88 +133,89 @@ class Solver():
             ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
 
     def train(self):
-        self.net.train()
-        self.ema_net.train()
-        for curr_epoch in range(self.start_epoch, self.end_epoch):
-            train_loss_record = AvgMeter()
-            for train_batch_id, train_data in enumerate(self.tr_loader):
-                curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
-                
-                self.opti.zero_grad()
-                train_inputs, train_depth, *train_other_data = train_data
-                train_inputs = train_inputs.to(self.dev, non_blocking=True)
-                train_depth = train_depth.to(self.dev, non_blocking=True)
-                train_other_data = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_other_data ]
-                train_preds = self.net(train_inputs, train_depth)
-                lb = self.args['labeled_batch_size']
+        if not self.only_test:
+            self.net.train()
+            self.ema_net.train()
+            for curr_epoch in range(self.start_epoch, self.end_epoch):
+                train_loss_record = AvgMeter()
+                for train_batch_id, train_data in enumerate(self.tr_loader):
+                    curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
+                    
+                    self.opti.zero_grad()
+                    train_inputs, train_depth, *train_other_data = train_data
+                    train_inputs = train_inputs.to(self.dev, non_blocking=True)
+                    train_depth = train_depth.to(self.dev, non_blocking=True)
+                    train_other_data = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_other_data ]
+                    train_preds = self.net(train_inputs, train_depth)
+                    lb = self.args['labeled_batch_size']
 
-                with torch.no_grad():
-                    ema_preds = self.ema_net(train_inputs[lb:], train_depth[lb:])
+                    with torch.no_grad():
+                        ema_preds = self.ema_net(train_inputs[lb:], train_depth[lb:])
 
-                # train_loss, loss_item_list = self.total_loss(train_preds, train_other_data[0])
-                # train_loss, loss_item_list = self.deep_loss(train_preds, train_other_data)
-                train_loss, loss_item_list, \
-                supervised_loss, consistency_loss, consistency_weight \
-                = self.mt_loss(train_preds, ema_preds, train_other_data[0], curr_epoch)
-                train_loss.backward()
-                self.opti.step()
-                self.update_ema_variables(curr_iter)
+                    # train_loss, loss_item_list = self.total_loss(train_preds, train_other_data[0])
+                    # train_loss, loss_item_list = self.deep_loss(train_preds, train_other_data)
+                    train_loss, loss_item_list, \
+                    supervised_loss, consistency_loss, consistency_weight \
+                    = self.mt_loss(train_preds, ema_preds, train_other_data[0], curr_epoch)
+                    train_loss.backward()
+                    self.opti.step()
+                    self.update_ema_variables(curr_iter)
+                    
+                    if self.args["sche_usebatch"]:
+                        if self.args["lr_type"] == "poly":
+                            self.sche.step(curr_iter + 1)
+                        else:
+                            raise NotImplementedError
+                    
+                    # 仅在累计的时候使用item()获取数据
+                    train_iter_loss = train_loss.item()
+                    train_batch_size = train_inputs.size(0)
+                    train_loss_record.update(train_iter_loss, train_batch_size)
+                    
+                    # 显示tensorboard
+                    if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
+                        self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
+                        self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
+                        self.tb.add_scalar("data/trloss_sup", supervised_loss, curr_iter)
+                        self.tb.add_scalar("data/trloss_con", consistency_loss, curr_iter)
+                        self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
+                        self.tb.add_scalar("data/trloss_con_weight", consistency_weight, curr_iter)
+                        
+                        lb = self.args["labeled_batch_size"]
+                        tr_tb_mask = make_grid(train_other_data[0][:lb], nrow=lb, padding=5)
+                        self.tb.add_image("trmasks_labeled", tr_tb_mask, curr_iter)
+
+                        tr_tb_out_1 = make_grid(train_preds[:lb], nrow=lb, padding=5)
+                        self.tb.add_image("trpreds_labeled", tr_tb_out_1, curr_iter)
+                        tr_tb_out_2 = make_grid(train_preds[lb:], nrow=train_batch_size - lb, padding=5)
+                        self.tb.add_image("trpreds_unlabeled", tr_tb_out_2, curr_iter)
+                        tr_tb_out_3 = make_grid(ema_preds, nrow=train_batch_size - lb, padding=5)
+                        self.tb.add_image("emapreds_unlabeled", tr_tb_out_3, curr_iter)
+                    # 记录每一次迭代的数据
+                    if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):
+                        log = (
+                            f"[I:{curr_iter}/{self.iter_num}][E:{curr_epoch}:{self.end_epoch}]>"
+                            f"[{self.model_name}]"
+                            f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
+                            f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
+                            f"0.5*{loss_item_list}+({consistency_weight:.5f}*{consistency_loss:.5f})]"
+                        )
+                        print(log)
+                        make_log(self.path["tr_log"], log)
                 
-                if self.args["sche_usebatch"]:
+                # 根据周期修改学习率
+                if not self.args["sche_usebatch"]:
                     if self.args["lr_type"] == "poly":
-                        self.sche.step(curr_iter + 1)
+                        self.sche.step(curr_epoch + 1)
                     else:
                         raise NotImplementedError
                 
-                # 仅在累计的时候使用item()获取数据
-                train_iter_loss = train_loss.item()
-                train_batch_size = train_inputs.size(0)
-                train_loss_record.update(train_iter_loss, train_batch_size)
-                
-                # 显示tensorboard
-                if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
-                    self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
-                    self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
-                    self.tb.add_scalar("data/trloss_sup", supervised_loss, curr_iter)
-                    self.tb.add_scalar("data/trloss_con", consistency_loss, curr_iter)
-                    self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
-                    self.tb.add_scalar("data/trloss_con_weight", consistency_weight, curr_iter)
-                    
-                    lb = self.args["labeled_batch_size"]
-                    tr_tb_mask = make_grid(train_other_data[0][:lb], nrow=lb, padding=5)
-                    self.tb.add_image("trmasks_labeled", tr_tb_mask, curr_iter)
-
-                    tr_tb_out_1 = make_grid(train_preds[:lb], nrow=lb, padding=5)
-                    self.tb.add_image("trpreds_labeled", tr_tb_out_1, curr_iter)
-                    tr_tb_out_2 = make_grid(train_preds[lb:], nrow=train_batch_size - lb, padding=5)
-                    self.tb.add_image("trpreds_unlabeled", tr_tb_out_2, curr_iter)
-                    tr_tb_out_3 = make_grid(ema_preds, nrow=train_batch_size - lb, padding=5)
-                    self.tb.add_image("emapreds_unlabeled", tr_tb_out_3, curr_iter)
-                # 记录每一次迭代的数据
-                if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):
-                    log = (
-                        f"[I:{curr_iter}/{self.iter_num}][E:{curr_epoch}:{self.end_epoch}]>"
-                        f"[{self.model_name}]"
-                        f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
-                        f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
-                        f"0.5*{loss_item_list}+({consistency_weight:.5f}*{consistency_loss:.5f})]"
-                    )
-                    print(log)
-                    make_log(self.path["tr_log"], log)
-            
-            # 根据周期修改学习率
-            if not self.args["sche_usebatch"]:
-                if self.args["lr_type"] == "poly":
-                    self.sche.step(curr_epoch + 1)
-                else:
-                    raise NotImplementedError
-            
-            # 每个周期都进行保存测试，保存的是针对第curr_epoch+1周期的参数
-            self.save_checkpoint(
-                curr_epoch + 1,
-                full_net_path=self.path['final_full_net'],
-                state_net_path=self.path['final_state_net']
-            )  # 保存参数
+                # 每个周期都进行保存测试，保存的是针对第curr_epoch+1周期的参数
+                self.save_checkpoint(
+                    curr_epoch + 1,
+                    full_net_path=self.path['final_full_net'],
+                    state_net_path=self.path['final_state_net']
+                )  # 保存参数
         
         total_results = {}
         for data_name, data_path in self.te_data_list.items():
@@ -252,9 +254,10 @@ class Solver():
         for test_batch_id, test_data in tqdm_iter:
             tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
             with torch.no_grad():
-                in_imgs, in_names, in_mask_paths = test_data
+                in_imgs, in_depths, in_mask_paths, in_names = test_data
                 in_imgs = in_imgs.to(self.dev, non_blocking=True)
-                outputs = self.net(in_imgs)
+                in_depths = in_depths.to(self.dev, non_blocking=True)
+                outputs = self.net(in_imgs, in_depths)
             
             outputs_np = outputs.cpu().detach()
             
@@ -385,6 +388,7 @@ class Solver():
             'net_state': self.net.state_dict(),
             'ema_net_state': self.ema_net.state_dict(),
             'opti_state': self.opti.state_dict(),
+            'sche_state': self.sche.state_dict()
         }
         torch.save(state_dict, full_net_path)
         torch.save(self.net.state_dict(), state_net_path)
@@ -418,6 +422,7 @@ class Solver():
                     self.net.load_state_dict(checkpoint['net_state'])
                     self.ema_net.load_state_dict(checkpoint['ema_net_state'])
                     self.opti.load_state_dict(checkpoint['opti_state'])
+                    self.sche.load_state_dict(checkpoint['sche_state'])
                     construct_print(f"Loaded '{load_path}' "
                                     f"(epoch {checkpoint['epoch']})")
                 else:
@@ -429,4 +434,5 @@ class Solver():
             else:
                 raise NotImplementedError
         else:
-            raise Exception(f"{load_path}路径不正常，请检查")
+            self.start_epoch = 0
+            construct_print(f'Cannot found pth in {load_path:}, then train from(test based on) scratch')

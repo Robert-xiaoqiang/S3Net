@@ -57,11 +57,11 @@ class Solver():
             self.resume_checkpoint(load_path=self.path['final_full_net'], mode='all')
         else:
             self.start_epoch = 0
-        self.only_test = self.start_epoch == self.end_epoch
+        self.only_test = self.args['only_test']
         
-        if not self.only_test:
+        if not self.only_test:          
             # Ignore UserWarning
-            self.sche.step(self.start_epoch)
+            # self.sche.step(self.start_epoch)
             # 损失函数
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
@@ -81,69 +81,70 @@ class Solver():
         return train_loss, loss_item_list
     
     def train(self):
-        self.net.train()
-        for curr_epoch in range(self.start_epoch, self.end_epoch):
-            train_loss_record = AvgMeter()
-            for train_batch_id, train_data in enumerate(self.tr_loader):
-                curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
+        if not self.only_test:
+            self.net.train()
+            for curr_epoch in range(self.start_epoch, self.end_epoch):
+                train_loss_record = AvgMeter()
+                for train_batch_id, train_data in enumerate(self.tr_loader):
+                    curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
+                    
+                    self.opti.zero_grad()
+                    train_inputs, train_depths, train_masks, *train_leftover = train_data
+                    train_inputs = train_inputs.to(self.dev, non_blocking=True)
+                    train_depths = train_depths.to(self.dev, non_blocking=True)
+                    train_masks = train_masks.to(self.dev, non_blocking=True)
+                    train_preds = self.net(train_inputs, train_depths)
+                    
+                    train_loss, loss_item_list = self.total_loss(train_preds, train_masks)
+                    train_loss.backward()
+                    self.opti.step()
+                    
+                    if self.args["sche_usebatch"]:
+                        if self.args["lr_type"] == "poly":
+                            self.sche.step(curr_iter + 1)
+                        else:
+                            raise NotImplementedError
+                    
+                    # 仅在累计的时候使用item()获取数据
+                    train_iter_loss = train_loss.item()
+                    train_batch_size = train_inputs.size(0)
+                    train_loss_record.update(train_iter_loss, train_batch_size)
+                    
+                    # 显示tensorboard
+                    if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
+                        self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
+                        self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
+                        self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
+                        tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
+                        self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
+                        tr_tb_out_1 = make_grid(train_preds, nrow=train_batch_size, padding=5)
+                        self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
+                    
+                    # 记录每一次迭代的数据
+                    if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):
+                        log = (
+                            f"[I:{curr_iter}/{self.iter_num}][E:{curr_epoch}:{self.end_epoch}]>"
+                            f"[{self.model_name}]"
+                            f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
+                            f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
+                            f"{loss_item_list}]"
+                        )
+                        print(log)
+                        make_log(self.path["tr_log"], log)
                 
-                self.opti.zero_grad()
-                train_inputs, train_depths, train_masks, *train_leftover = train_data
-                train_inputs = train_inputs.to(self.dev, non_blocking=True)
-                train_depths = train_depths.to(self.dev, non_blocking=True)
-                train_masks = train_masks.to(self.dev, non_blocking=True)
-                train_preds = self.net(train_inputs, train_depths)
-                
-                train_loss, loss_item_list = self.total_loss(train_preds, train_masks)
-                train_loss.backward()
-                self.opti.step()
-                
-                if self.args["sche_usebatch"]:
+                # 根据周期修改学习率
+                if not self.args["sche_usebatch"]:
                     if self.args["lr_type"] == "poly":
-                        self.sche.step(curr_iter + 1)
+                        self.sche.step(curr_epoch + 1)
                     else:
                         raise NotImplementedError
                 
-                # 仅在累计的时候使用item()获取数据
-                train_iter_loss = train_loss.item()
-                train_batch_size = train_inputs.size(0)
-                train_loss_record.update(train_iter_loss, train_batch_size)
-                
-                # 显示tensorboard
-                if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
-                    self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
-                    self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
-                    self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
-                    tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
-                    self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
-                    tr_tb_out_1 = make_grid(train_preds, nrow=train_batch_size, padding=5)
-                    self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
-                
-                # 记录每一次迭代的数据
-                if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):
-                    log = (
-                        f"[I:{curr_iter}/{self.iter_num}][E:{curr_epoch}:{self.end_epoch}]>"
-                        f"[{self.model_name}]"
-                        f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
-                        f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
-                        f"{loss_item_list}]"
-                    )
-                    print(log)
-                    make_log(self.path["tr_log"], log)
-            
-            # 根据周期修改学习率
-            if not self.args["sche_usebatch"]:
-                if self.args["lr_type"] == "poly":
-                    self.sche.step(curr_epoch + 1)
-                else:
-                    raise NotImplementedError
-            
-            # 每个周期都进行保存测试，保存的是针对第curr_epoch+1周期的参数
-            self.save_checkpoint(
-                curr_epoch + 1,
-                full_net_path=self.path['final_full_net'],
-                state_net_path=self.path['final_state_net']
-            )  # 保存参数
+                # 每个周期都进行保存测试，保存的是针对第curr_epoch+1周期的参数
+                self.save_checkpoint(
+                    curr_epoch + 1,
+                    full_net_path=self.path['final_full_net'],
+                    state_net_path=self.path['final_state_net']
+                )  # 保存参数
         
         total_results = {}
         for data_name, data_path in self.te_data_list.items():
