@@ -320,7 +320,17 @@ class Solver():
         }
         torch.save(state_dict, full_net_path)
         torch.save(self.net.state_dict(), state_net_path)
-    
+
+        if not current_epoch % 50:
+            dirname, basename0 = os.path.split(full_net_path)
+            dirname, basename1 = os.path.split(state_net_path)
+            new_dirname = os.path.join(dirname, str(current_epoch))
+            os.makedirs(new_dirname, exist_ok = True)
+            new_filename0 = os.path.join(new_dirname, basename0)
+            new_filename1 = os.path.join(new_dirname, basename1)
+            torch.save(state_dict, new_filename0)
+            torch.save(self.net.state_dict(), new_filename1)
+
     def resume_checkpoint(self, load_path, mode='all'):
         """
         从保存节点恢复模型

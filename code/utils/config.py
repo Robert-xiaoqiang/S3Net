@@ -35,7 +35,7 @@ arg_config = {
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 360,  # 训练周期, 0: directly test model
+    'epoch_num': 500,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
@@ -74,15 +74,15 @@ arg_config = {
     'is_mt': None, # set in main.py or main_mt.py
     'labeled_batch_size': 4,
     'ema_decay': 0.99,
-    'consistency': 0.1,
+    'consistency': 1.0,
     'consistency_rampup': 150.0
 }
 ################################################################################
 
-# summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 era
-# summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 200 era
-# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 era
-summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 180 era + njud-nlpr 180 era
+# summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras
+# summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras
+# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras
+summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras
 # summary key solves other varients(supervised only or MT guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
