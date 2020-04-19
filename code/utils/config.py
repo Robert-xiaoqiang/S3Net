@@ -31,7 +31,7 @@ arg_config = {
         'exp_name': 'SCFNet_Res50'
     },
     
-    'only_test': False,
+    'only_test': True,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
