@@ -262,6 +262,7 @@ class Solver():
                         save_key = 'best'
                     )
            construct_print('Update best epoch')
+           construct_print('Epoch {} with best validating results: {}'.format(curr_epoch, self.best_results))
         construct_print('Finish validating')
 
     def test(self, save_pre):
