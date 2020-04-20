@@ -80,9 +80,9 @@ arg_config = {
 ################################################################################
 
 # summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras / batch 4
-# summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras / batch 4+4 ? how about 4+2 / 6+2
+summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras / batch 4+4 ? how about 4+2 / 6+2
 # summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
-summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
+# summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary key solves other varients(supervised only or MT guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 

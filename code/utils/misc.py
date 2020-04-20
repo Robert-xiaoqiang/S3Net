@@ -313,8 +313,8 @@ def write_xlsx(model_name, data):
             for cell in row:
                 if cell.value == dataset_name:
                     for i in range(num_metrics):
-                        matric_name = sheet.cell(row=3, column=int(cell.column) + i).value
-                        sheet.cell(row=idx_insert_row, column=int(cell.column) + i,
+                        matric_name = sheet.cell(row=3, column=cell.column + str(i)).value
+                        sheet.cell(row=idx_insert_row, column=cell.column + str(i),
                                    value=data[dataset_name][matric_name])
     wb.save(path_config['xlsx'])
 
