@@ -163,7 +163,7 @@ class Solver():
             
             total_results[data_name.upper()] = results
         # save result into xlsx file.
-        write_xlsx(self.model_name, total_results)
+        # write_xlsx(self.model_name, total_results)
     
     def test(self, save_pre):
         if self.only_test:

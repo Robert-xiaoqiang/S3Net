@@ -20,6 +20,7 @@ lfsd_path = os.path.join(datasets_root, 'LFSD')
 # train_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'train_data')
 # test_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'test_data')
 train_path = os.path.join(datasets_root, 'NJUD-NLPR', 'train_data')
+val_path = os.path.join(datasets_root, 'VAL')
 test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
 
 # 配置区域 #####################################################################
@@ -31,17 +32,18 @@ arg_config = {
         'exp_name': 'SCFNet_Res50'
     },
     
-    'only_test': True,
+    'only_test': False,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 500,  # 训练周期, 0: directly test model
+    'epoch_num': 350,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
     'rgb_data': {
         'unlabeled_path': unlabeled_path,
         'tr_data_path': train_path,
+        'val_data_path': val_path,
         'te_data_path': test_path,
         'te_data_list': {
             'njud': njud_path,
@@ -75,12 +77,13 @@ arg_config = {
     'labeled_batch_size': 4,
     'ema_decay': 0.99,
     'consistency': 1.0,
-    'consistency_rampup': 150.0
+    'consistency_rampup': 100.0
 }
 ################################################################################
 
 # summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras / batch 4
-summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras / batch 4+4 ? how about 4+2 / 6+2
+# summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras / batch 4+4 ? how about 4+2 / 6+2
+summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 100 ramp up and 1 weight
 # summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary key solves other varients(supervised only or MT guiding unlabel data)
