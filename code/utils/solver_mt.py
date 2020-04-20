@@ -248,6 +248,7 @@ class Solver():
         self.te_loader, self.te_length = create_loader(
             data_path=self.val_data_path, mode='test', get_length=True
         )
+        construct_print('Start validating')
         results = self.test(save_pre=False) # just flush it
         if results['S'] > self.best_results['S'] or \
            results['MAXF'] > self.best_results['MAXF'] or \
@@ -260,6 +261,8 @@ class Solver():
                         state_net_path=self.path['final_state_net'],
                         save_key = 'best'
                     )
+           construct_print('Update best epoch')
+        construct_print('Finish validating')
 
     def test(self, save_pre):
         if self.only_test:
