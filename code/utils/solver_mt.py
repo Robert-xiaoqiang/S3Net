@@ -141,10 +141,12 @@ class Solver():
 
     def train(self):
         if not self.only_test:
-            self.net.train()
             self.ema_net.train()
             for curr_epoch in range(self.start_epoch, self.end_epoch):
+                self.net.train()
                 train_loss_record = AvgMeter()
+                supervised_loss_record = AvgMeter()
+                consistency_loss_record = AvgMeter()
                 for train_batch_id, train_data in enumerate(self.tr_loader):
                     curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
                     
@@ -177,14 +179,18 @@ class Solver():
                     # 仅在累计的时候使用item()获取数据
                     train_iter_loss = train_loss.item()
                     train_batch_size = train_inputs.size(0)
-                    train_loss_record.update(train_iter_loss, train_batch_size)
+                    # number_train_batch_per_epoch
+                    train_loss_record.update(train_iter_loss, 1)
+                    supervised_loss_record.update(supervised_loss.item(), 1)
+                    consistency_loss_record.update(consistency_loss.item(), 1)
+
                     
                     # 显示tensorboard
                     if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
                         self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
-                        self.tb.add_scalar("data/trloss_sup", supervised_loss, curr_iter)
-                        self.tb.add_scalar("data/trloss_con", consistency_loss, curr_iter)
+                        self.tb.add_scalar("data/trloss_sup", supervised_loss_record.avg, curr_iter)
+                        self.tb.add_scalar("data/trloss_con", consistency_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
                         self.tb.add_scalar("data/trloss_con_weight", consistency_weight, curr_iter)
                         
