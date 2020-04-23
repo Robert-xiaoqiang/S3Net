@@ -28,9 +28,16 @@ class Solver():
         self.model_name = args[args['NET']]['exp_name']
         
         self.tr_data_path = self.args['rgb_data']['tr_data_path']
+        self.val_data_path = self.args['rgb_data']['val_data_path']
         self.te_data_path = self.args['rgb_data']['te_data_path']
         self.te_data_list = self.args['rgb_data']['te_data_list']
-        
+        self.best_results = {
+            'MAE': 100.0,
+            'MAXF': 0.0,
+            'MAXE': 0.0,
+            'S': 0.0,
+        }
+
         self.save_path = self.path["save"]
         self.save_pre = self.args["save_pre"]
         if self.args["tb_update"] > 0:
@@ -145,6 +152,7 @@ class Solver():
                     full_net_path=self.path['final_full_net'],
                     state_net_path=self.path['final_state_net']
                 )  # 保存参数
+                self.validate(curr_epoch)
         
         total_results = {}
         for data_name, data_path in self.te_data_list.items():
@@ -164,6 +172,27 @@ class Solver():
             total_results[data_name.upper()] = results
         # save result into xlsx file.
         # write_xlsx(self.model_name, total_results)
+
+    def validate(self, curr_epoch):
+        self.te_loader, self.te_length = create_loader(
+            data_path=self.val_data_path, mode='test', get_length=True
+        )
+        construct_print('Start validating')
+        results = self.test(save_pre=False) # just flush it
+        if results['S'] > self.best_results['S'] or \
+           results['MAXF'] > self.best_results['MAXF'] or \
+           results['MAXE'] > self.best_results['MAXE'] or \
+           results['MAE'] < self.best_results['MAE']:
+           self.best_results.update(results)
+           self.save_checkpoint(
+                        curr_epoch + 1,
+                        full_net_path=self.path['final_full_net'],
+                        state_net_path=self.path['final_state_net'],
+                        save_key = 'best'
+                    )
+           construct_print('Update best epoch')
+           construct_print('Epoch {} with best validating results: {}'.format(curr_epoch, self.best_results))
+        construct_print('Finish validating')
     
     def test(self, save_pre):
         if self.only_test:
@@ -302,7 +331,7 @@ class Solver():
         print("optimizer = ", optimizer)
         return optimizer
     
-    def save_checkpoint(self, current_epoch, full_net_path, state_net_path):
+    def save_checkpoint(self, current_epoch, full_net_path, state_net_path, save_key = None):
         """
         保存完整参数模型（大）和状态参数模型（小）
 
@@ -321,15 +350,15 @@ class Solver():
         torch.save(state_dict, full_net_path)
         torch.save(self.net.state_dict(), state_net_path)
 
-        if not current_epoch % 50:
+        if save_key is not None:
             dirname, basename0 = os.path.split(full_net_path)
             dirname, basename1 = os.path.split(state_net_path)
-            new_dirname = os.path.join(dirname, str(current_epoch))
+            new_dirname = os.path.join(dirname, save_key)
             os.makedirs(new_dirname, exist_ok = True)
             new_filename0 = os.path.join(new_dirname, basename0)
             new_filename1 = os.path.join(new_dirname, basename1)
             torch.save(state_dict, new_filename0)
-            torch.save(self.net.state_dict(), new_filename1)
+            torch.save(self.net.state_dict(), new_filename1) 
 
     def resume_checkpoint(self, load_path, mode='all'):
         """
