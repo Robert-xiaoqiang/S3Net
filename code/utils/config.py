@@ -34,9 +34,9 @@ arg_config = {
     
     'only_test': True,
     'resume': True,  # resume when training/testing
-    'use_aux_loss': False,  # 是否使用辅助损失
+    'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 200,  # 训练周期, 0: directly test model
+    'epoch_num': 120,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
@@ -77,14 +77,14 @@ arg_config = {
     'labeled_batch_size': 4,
     'ema_decay': 0.99,
     'consistency': 1.0,
-    'consistency_rampup': 100.0
+    'consistency_rampup': 60
 }
 ################################################################################
 
 # summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras / batch 4+4 ? how about 4+2 / 6+2
-# summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 100 ramp up and 1 weight
-summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
+summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 100 ramp up and 1 weight
+# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
 # summary key solves other varients(supervised only or MT guiding unlabel data)
