@@ -118,11 +118,23 @@ class Solver():
         lb = self.args['labeled_batch_size']
         assert len(self.loss_funcs) != 0, "请指定损失函数`self.loss_funcs`"
         for loss in self.loss_funcs:
-            loss_out = loss(train_preds[:lb], train_masks[:lb])
+            loss_out = loss(train_preds[0][:lb], train_masks[:lb])
             loss_list.append(loss_out)
             loss_item_list.append(f"{loss_out.item():.5f}")
         supervised_loss = sum(loss_list)
-        consistency_loss = self.mes_loss(train_preds[lb:], ema_preds)
+        
+        consistency_loss = self.mes_loss(train_preds[0][lb:], ema_preds[0])
+        consistency_loss_2 = self.mes_loss(train_preds[1][lb:], ema_preds[1])
+        consistency_loss_4 = self.mes_loss(train_preds[2][lb:], ema_preds[2])
+        consistency_loss_8 = self.mes_loss(train_preds[3][lb:], ema_preds[3])
+        consistency_loss_16 = self.mes_loss(train_preds[4][lb:], ema_preds[4])
+        consistency_loss_32 = self.mes_loss(train_preds[5][lb:], ema_preds[5])
+        consistency_loss = consistency_loss + 0.5 * consistency_loss_2 \
+                                            + 0.5 * consistency_loss_4 \
+                                            + 0.5 * consistency_loss_8 \
+                                            + 0.5 * consistency_loss_16 \
+                                            + 0.5 * consistency_loss_32                                            
+
         consistency_weight = self.get_current_consistency_weight(epoch)
         train_loss = 0.5 * supervised_loss + consistency_weight * consistency_loss
         return train_loss, loss_item_list, supervised_loss, consistency_loss, consistency_weight
@@ -198,11 +210,11 @@ class Solver():
                         tr_tb_mask = make_grid(train_other_data[0][:lb], nrow=lb, padding=5)
                         self.tb.add_image("trmasks_labeled", tr_tb_mask, curr_iter)
 
-                        tr_tb_out_1 = make_grid(train_preds[:lb], nrow=lb, padding=5)
+                        tr_tb_out_1 = make_grid(train_preds[0][:lb], nrow=lb, padding=5)
                         self.tb.add_image("trpreds_labeled", tr_tb_out_1, curr_iter)
-                        tr_tb_out_2 = make_grid(train_preds[lb:], nrow=train_batch_size - lb, padding=5)
+                        tr_tb_out_2 = make_grid(train_preds[0][lb:], nrow=train_batch_size - lb, padding=5)
                         self.tb.add_image("trpreds_unlabeled", tr_tb_out_2, curr_iter)
-                        tr_tb_out_3 = make_grid(ema_preds, nrow=train_batch_size - lb, padding=5)
+                        tr_tb_out_3 = make_grid(ema_preds[0], nrow=train_batch_size - lb, padding=5)
                         self.tb.add_image("emapreds_unlabeled", tr_tb_out_3, curr_iter)
                     # 记录每一次迭代的数据
                     if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):
