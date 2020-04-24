@@ -306,7 +306,7 @@ class Solver():
                 in_depths = in_depths.to(self.dev, non_blocking=True)
                 outputs = self.net(in_imgs, in_depths)
             
-            outputs_np = outputs.cpu().detach()
+            outputs_np = outputs[0].cpu().detach()
             
             for item_id, out_item in enumerate(outputs_np):
                 gimg_path = osp.join(in_mask_paths[item_id])
