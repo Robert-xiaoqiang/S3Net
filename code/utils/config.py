@@ -83,7 +83,8 @@ arg_config = {
 
 # summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-mt-2-0' #: 1 time middle channel njud-nlpr 500 eras / 150 rampup / fine tune
-summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
+# summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
+summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 4)
 # summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
