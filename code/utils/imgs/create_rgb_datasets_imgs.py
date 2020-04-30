@@ -339,7 +339,9 @@ class TrainSSImageFolder(Dataset):
             if self.use_bigt:
                 mask = mask.ge(0.5).float()  # 二值化
             
-            rotate_label = torch.zeros((self.times), dtype = torch.int64).scatter_(0, torch.LongTensor([ rotate_index ]), torch.LongTensor([ 1 ])).long()
+            # rotate_label = torch.zeros((self.times), dtype = torch.int64).scatter_(0, torch.LongTensor([ rotate_index ]), torch.LongTensor([ 1 ])).long()
+            rotate_label = torch.tensor(rotate_index).long()
+
             img_name = (img_path.split(os.sep)[-1]).split('.')[0]
             
             return img, depth, mask, rotate_label, img_name
@@ -365,8 +367,9 @@ class TrainSSImageFolder(Dataset):
             
             unlabeled_mask = torch.zeros((1, self.in_size, self.in_size)).float() # dummy
 
-            unlabeled_rotate_label = torch.zeros((self.times), dtype = torch.int64).scatter_(0, torch.LongTensor([ rotate_index ]), torch.LongTensor([ 1 ]))
-            
+            # unlabeled_rotate_label = torch.zeros((self.times), dtype = torch.int64).scatter_(0, torch.LongTensor([ rotate_index ]), torch.LongTensor([ 1 ]))
+            unlabeled_rotate_label = torch.tensor(rotate_index).long()
+
             unlabeled_img_name = (unlabeled_img_path.split(os.sep)[-1]).split('.')[0]
             
             return unlabeled_img, unlabeled_depth, unlabeled_mask, unlabeled_rotate_label, unlabeled_img_name             

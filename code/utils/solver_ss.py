@@ -89,6 +89,7 @@ class Solver():
             loss_item_list.append(f"{loss_out.item():.5f}") # bce + dice loss for labeled data
         supervised_loss = sum(loss_list)
         # rotation self-supervised loss for labeled and unlabeled data
+
         rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
         # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:])
         train_loss = supervised_loss + self.args['rot_loss_weight'] * rotation_loss
@@ -108,6 +109,8 @@ class Solver():
                     train_inputs = train_inputs.to(self.dev, non_blocking=True)
                     train_depths = train_depths.to(self.dev, non_blocking=True)
                     train_masks = train_masks.to(self.dev, non_blocking=True)
+                    train_leftover = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_leftover ]
+                    
                     train_preds = self.net(train_inputs, train_depths)
                     
                     train_loss, loss_item_list, rotation_loss = self.s4l_loss(train_preds, train_masks, train_leftover[0])
@@ -134,7 +137,7 @@ class Solver():
                         self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
                         tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
                         self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
-                        tr_tb_out_1 = make_grid(train_preds, nrow=train_batch_size, padding=5)
+                        tr_tb_out_1 = make_grid(train_preds[0], nrow=train_batch_size, padding=5)
                         self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
                     
                     # 记录每一次迭代的数据

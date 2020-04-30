@@ -80,18 +80,18 @@ class Solver():
                 self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
             self.mes_loss = MSELoss(reduction=self.args['reduction']).to(self.dev)
     
-    def deep_loss(self, train_preds, train_other_data):
+    def deep_loss(self, train_preds, train_leftover):
         loss_list = []
         loss_item_list = []
         
         assert len(self.loss_funcs) != 0, "请指定损失函数`self.loss_funcs`"
         for loss in self.loss_funcs:
-            loss_out_final = loss(train_preds[0], train_other_data[0])
-            # loss_out0 = loss(train_preds[1], train_other_data[1])
-            loss_out1 = loss(train_preds[2], train_other_data[2])
-            loss_out2 = loss(train_preds[3], train_other_data[3])
-            loss_out3 = loss(train_preds[4], train_other_data[4])
-            # loss_out4 = loss(train_preds[5], train_other_data[5])
+            loss_out_final = loss(train_preds[0], train_leftover[0])
+            # loss_out0 = loss(train_preds[1], train_leftover[1])
+            loss_out1 = loss(train_preds[2], train_leftover[2])
+            loss_out2 = loss(train_preds[3], train_leftover[3])
+            loss_out3 = loss(train_preds[4], train_leftover[4])
+            # loss_out4 = loss(train_preds[5], train_leftover[5])
             loss_out = loss_out_final + 0.5 * loss_out1 + 0.3 * loss_out2 + 0.2 * loss_out3
             loss_list.append(loss_out)
             loss_item_list.append(f"{loss_out.item():.5f}")
@@ -150,21 +150,21 @@ class Solver():
                     curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
                     
                     self.opti.zero_grad()
-                    train_inputs, train_depth, *train_other_data = train_data
+                    train_inputs, train_depth, *train_leftover = train_data
                     train_inputs = train_inputs.to(self.dev, non_blocking=True)
                     train_depth = train_depth.to(self.dev, non_blocking=True)
-                    train_other_data = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_other_data ]
+                    train_leftover = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_leftover ]
                     train_preds = self.net(train_inputs, train_depth)
                     lb = self.args['labeled_batch_size']
 
                     with torch.no_grad():
                         ema_preds = self.ema_net(train_inputs[lb:], train_depth[lb:])
 
-                    # train_loss, loss_item_list = self.total_loss(train_preds, train_other_data[0])
-                    # train_loss, loss_item_list = self.deep_loss(train_preds, train_other_data)
+                    # train_loss, loss_item_list = self.total_loss(train_preds, train_leftover[0])
+                    # train_loss, loss_item_list = self.deep_loss(train_preds, train_leftover)
                     train_loss, loss_item_list, \
                     supervised_loss, consistency_loss, consistency_weight \
-                    = self.mt_loss(train_preds, ema_preds, train_other_data[0], curr_epoch)
+                    = self.mt_loss(train_preds, ema_preds, train_leftover[0], curr_epoch)
                     train_loss.backward()
                     self.opti.step()
                     self.update_ema_variables(curr_iter)
@@ -194,7 +194,7 @@ class Solver():
                         self.tb.add_scalar("data/trloss_con_weight", consistency_weight, curr_iter)
                         
                         lb = self.args["labeled_batch_size"]
-                        tr_tb_mask = make_grid(train_other_data[0][:lb], nrow=lb, padding=5)
+                        tr_tb_mask = make_grid(train_leftover[0][:lb], nrow=lb, padding=5)
                         self.tb.add_image("trmasks_labeled", tr_tb_mask, curr_iter)
 
                         tr_tb_out_1 = make_grid(train_preds[0][:lb], nrow=lb, padding=5)
