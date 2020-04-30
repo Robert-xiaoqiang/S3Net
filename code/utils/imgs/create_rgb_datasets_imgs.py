@@ -276,6 +276,108 @@ class TrainMTImageFolder(Dataset):
     def get_primary_secondary_indices(self):
         return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))
 
+class TrainSSImageFolder(Dataset):
+    def __init__(self, root, unlabeled_root, in_size, prefix, use_bigt=False, rotations = (0, 90, 180, 270)):
+        self.in_size = in_size
+        self.use_bigt = use_bigt
+        self.rotations = rotations
+        self.times = len(rotations)
+
+        if os.path.isdir(root):
+            construct_print(f"{root} is an image folder, we will train on it.")
+            self.imgs = _make_dataset(root, split = 'train')
+        elif os.path.isfile(root):
+            construct_print(f"{root} is a list of images, we will use these paths to read the "
+                            f"corresponding image")
+            self.imgs = _make_train_dataset_from_list(root, prefix=prefix)
+        else:
+            raise NotImplementedError
+        if os.path.isdir(unlabeled_root):
+            construct_print(f"{unlabeled_root} is an image folder, we will conduct MT on it.")
+            self.unlabeled_imgs = _make_unlabeled_dataset(unlabeled_root, split = 'train')
+        elif os.path.isfile(unlabeled_root):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+        self.train_joint_transform = JointResize(in_size)
+
+        self.train_img_transform = transforms.Compose([
+            transforms.ColorJitter(0.1, 0.1, 0.1),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406],
+                                 [0.229, 0.224, 0.225])  # 处理的是Tensor
+        ])
+        self.train_depth_transform = transforms.ToTensor()
+        self.train_mask_transform = transforms.ToTensor()
+    
+    def __getitem__(self, index):
+        main_index, rotate_index = index // self.times, index % self.times
+
+        if main_index < len(self.imgs):
+            img_path, depth_path, mask_path = self.imgs[main_index]
+            
+            img = Image.open(img_path)
+            depth = Image.open(depth_path)
+            mask = Image.open(mask_path)
+            if len(img.split()) != 3:
+                img = img.convert('RGB')
+            if len(depth.split()) == 3:
+                depth = depth.convert('L')
+            if len(mask.split()) == 3:
+                mask = mask.convert('L')
+
+            img, depth, mask = self.train_joint_transform(img, depth, mask)
+            img = img.rotate(self.rotations[rotate_index])
+            depth = depth.rotate(self.rotations[rotate_index])
+            mask = mask.rotate(self.rotations[rotate_index])
+
+            mask = self.train_mask_transform(mask).float()
+            img = self.train_img_transform(img).float()
+            depth = self.train_depth_transform(depth).float()
+            # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
+            if self.use_bigt:
+                mask = mask.ge(0.5).float()  # 二值化
+            
+            rotate_label = torch.zeros((self.times), dtype = torch.int64).scatter_(0, torch.LongTensor([ rotate_index ]), torch.LongTensor([ 1 ])).long()
+            img_name = (img_path.split(os.sep)[-1]).split('.')[0]
+            
+            return img, depth, mask, rotate_label, img_name
+        else:
+            main_index -= len(self.imgs)
+            # without unlabeled_mask_path
+            unlabeled_img_path, unlabeled_depth_path = self.unlabeled_imgs[main_index]
+            unlabeled_img = Image.open(unlabeled_img_path)
+            unlabeled_depth = Image.open(unlabeled_depth_path)
+
+            if len(unlabeled_img.split()) != 3:
+                unlabeled_img = unlabeled_img.convert('RGB')
+            if len(unlabeled_depth.split()) == 3:
+                unlabeled_depth = unlabeled_depth.convert('L')            
+            
+            unlabeled_img, unlabeled_depth = self.train_joint_transform(unlabeled_img, unlabeled_depth)
+            unlabeled_img = unlabeled_img.rotate(self.rotations[rotate_index])
+            unlabeled_depth = unlabeled_depth.rotate(self.rotations[rotate_index])
+
+            unlabeled_img = self.train_img_transform(unlabeled_img).float()
+            unlabeled_depth = self.train_depth_transform(unlabeled_depth).float()
+            unlabeled_depth = (unlabeled_depth - torch.min(unlabeled_depth)) / (torch.max(unlabeled_depth) - torch.min(unlabeled_depth) + torch.tensor(1.0e-6))
+            
+            unlabeled_mask = torch.zeros((1, self.in_size, self.in_size)).float() # dummy
+
+            unlabeled_rotate_label = torch.zeros((self.times), dtype = torch.int64).scatter_(0, torch.LongTensor([ rotate_index ]), torch.LongTensor([ 1 ]))
+            
+            unlabeled_img_name = (unlabeled_img_path.split(os.sep)[-1]).split('.')[0]
+            
+            return unlabeled_img, unlabeled_depth, unlabeled_mask, unlabeled_rotate_label, unlabeled_img_name             
+    
+    def __len__(self):
+        return (len(self.imgs) + len(self.unlabeled_imgs)) * self.times
+
+    def get_primary_secondary_indices(self):
+        return np.arange(len(self.imgs) * self.times), np.arange(len(self.imgs) * self.times, len(self.unlabeled_imgs) * self.times)
+
+
 if __name__ == '__main__':
     img_list = _make_train_dataset_from_list()
     construct_print(len(img_list))

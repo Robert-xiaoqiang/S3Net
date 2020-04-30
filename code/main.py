@@ -6,6 +6,7 @@ from utils.misc import construct_print, pre_mkdir
 from utils.solver import Solver
 
 arg_config['is_mt'] = False
+arg_config['is_ss'] = False
 
 construct_print(f"{datetime.now()}: Initializing...")
 construct_print(f"Project Root: {proj_root}")

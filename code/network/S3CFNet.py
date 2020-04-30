@@ -34,31 +34,12 @@ class S3CFNet_Res50(nn.Module):
         self.upconv1 = BasicConv2d(32 * 2, 32 * 2, kernel_size=3, stride=1, padding=1)
         
         self.classifier = nn.Conv2d(32 * 2, 1, 1)
-
-        self.classifier_2 = nn.Sequential(
-                nn.Conv2d(64 * 2, 1, 1),
-                nn.Sigmoid()
+        self.rotation_classifier = nn.Sequential(
+                nn.Conv2d(32 * 2, 32, 3, stride = 1, padding = 1),
+                # nn.ReLU(),
+                nn.Conv2d(32, 4, 1, 1)
             )
 
-        self.classifier_4 = nn.Sequential(
-                nn.Conv2d(64 * 2, 1, 1),
-                nn.Sigmoid()
-            )
-
-        self.classifier_8 = nn.Sequential(
-                nn.Conv2d(64 * 2, 1, 1),
-                nn.Sigmoid()
-            )
-        self.classifier_16 = nn.Sequential(
-                nn.Conv2d(64 * 2, 1, 1),
-                nn.Sigmoid()
-            )
-
-        self.classifier_32 = nn.Sequential(
-                nn.Conv2d(64 * 2, 1, 1),
-                nn.Sigmoid()
-            )
-    
     def forward(self, rgb, depth):
         rgb_data_2 = self.rgb_div_2(rgb)
         rgb_data_4 = self.rgb_div_4(rgb_data_2)
@@ -95,5 +76,4 @@ class S3CFNet_Res50(nn.Module):
         out_data_1 = self.upconv1(self.upsample(out_data_2, scale_factor=2))  # 32
         out_data = self.classifier(out_data_1)
         
-        return out_data.sigmoid(), self.classifier_2(in_data_2), self.classifier_4(in_data_4), \
-               self.classifier_8(in_data_8), self.classifier_16(in_data_16), self.classifier_32(in_data_32)
+        return out_data.sigmoid(), self.rotation_classifier(out_data_1)

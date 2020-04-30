@@ -3,10 +3,10 @@ from datetime import datetime
 
 from utils.config import arg_config, path_config, proj_root
 from utils.misc import construct_print, pre_mkdir
-from utils.solver_mt import Solver
+from utils.solver_ss import Solver
 
-arg_config['is_mt'] = True
-arg_config['is_ss'] = False
+arg_config['is_mt'] = False
+arg_config['is_ss'] = True
 
 construct_print(f"{datetime.now()}: Initializing...")
 construct_print(f"Project Root: {proj_root}")

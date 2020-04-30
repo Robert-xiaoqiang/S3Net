@@ -5,6 +5,7 @@ from datetime import datetime
 __all__ = ['proj_root', 'arg_config', 'path_config']
 
 from network.SCFNet import SCFNet_Res50
+from network.S3CFNet import S3CFNet_Res50
 
 proj_root = os.path.dirname(os.path.dirname(__file__))
 datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
@@ -26,11 +27,15 @@ test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'SCFNet_Res50',  # 决定使用哪一个网络
+    'NET': 'S3CFNet_Res50',  # 决定使用哪一个网络
     'SCFNet_Res50': {
         'net': SCFNet_Res50,
         'exp_name': 'SCFNet_Res50'
     },
+    'S3CFNet_Res50': {
+        'net': S3CFNet_Res50,
+        'exp_name': 'S3CFNet_Res50'
+    },    
     
     'only_test': False,
     'resume': True,  # resume when training/testing
@@ -77,7 +82,10 @@ arg_config = {
     'labeled_batch_size': 4,
     'ema_decay': 0.99,
     'consistency': 1.0,
-    'consistency_rampup': 300
+    'consistency_rampup': 300,
+
+    'is_ss': None, # set in main_ss.pt or main_ss_mt.py
+    'rot_loss_weight': 1
 }
 ################################################################################
 
@@ -85,11 +93,12 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-mt-2-0' #: 1 time middle channel njud-nlpr 500 eras / 150 rampup / fine tune
 # summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 4)
-summary_key = 'exp-reduce-channel-mt-3' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 8)
+# summary_key = 'exp-reduce-channel-mt-3' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 8)
 # summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
-# summary key solves other varients(supervised only or MT guiding unlabel data)
+summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
+# summary key solves other varients(supervised only or MT/SS guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
 # this only solves the problem of architecture varients

@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from PIL import Image
 from tensorboardX import SummaryWriter
-from torch.nn import BCELoss, MSELoss
+from torch.nn import BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD, lr_scheduler
 from torchvision import transforms
 from torchvision.utils import make_grid
@@ -15,7 +15,8 @@ from tqdm import tqdm
 from loss.CEL import CEL
 from utils.imgs.create_loader_imgs import create_loader
 from utils.metric import cal_maxf, cal_pr_mae_meanf, cal_maxe, cal_s
-from utils.misc import Ramper, AvgMeter, construct_print, make_log, write_xlsx
+from utils.misc import AvgMeter, construct_print, make_log, write_xlsx
+
 
 class Solver():
     def __init__(self, args, path):
@@ -36,7 +37,7 @@ class Solver():
             'MAXE': 0.0,
             'S': 0.0,
         }
-        
+
         self.save_path = self.path["save"]
         self.save_pre = self.args["save_pre"]
         if self.args["tb_update"] > 0:
@@ -51,15 +52,7 @@ class Solver():
             data_path=self.te_data_path, mode='test', get_length=True
         )
         
-        self.net = self.args[self.args["NET"]]["net"]()
-        self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
-        self.net.to(self.dev)
-        self.ema_net = self.args[self.args["NET"]]["net"]()
-        self.ema_net = torch.nn.DataParallel(self.ema_net, device_ids = self.args['gpus'])
-        self.ema_net.to(self.dev)
-
-        for param in self.ema_net.parameters():
-            param.detach_()
+        self.net = self.args[self.args["NET"]]["net"]().to(self.dev)
         self.opti = self.make_optim()
         
         self.end_epoch = self.args["epoch_num"]
@@ -72,102 +65,54 @@ class Solver():
         else:
             self.start_epoch = 0
         self.only_test = self.args['only_test']
-
-        if not self.only_test:
+        
+        if not self.only_test:          
+            # Ignore UserWarning
+            # self.sche.step(self.start_epoch)
             # 损失函数
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
                 self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
-            self.mes_loss = MSELoss(reduction=self.args['reduction']).to(self.dev)
-    
-    def deep_loss(self, train_preds, train_other_data):
+            self.cross_entropy_loss = CrossEntropyLoss(reduction=self.args['reduction']).to(self.dev)
+    # [0, 1]
+    # segmentation output, rotation prediction output
+    # B*C*shape, B*C*shape
+    def s4l_loss(self, train_preds, train_masks, rotation_labels):
         loss_list = []
         loss_item_list = []
-        
-        assert len(self.loss_funcs) != 0, "请指定损失函数`self.loss_funcs`"
-        for loss in self.loss_funcs:
-            loss_out_final = loss(train_preds[0], train_other_data[0])
-            # loss_out0 = loss(train_preds[1], train_other_data[1])
-            loss_out1 = loss(train_preds[2], train_other_data[2])
-            loss_out2 = loss(train_preds[3], train_other_data[3])
-            loss_out3 = loss(train_preds[4], train_other_data[4])
-            # loss_out4 = loss(train_preds[5], train_other_data[5])
-            loss_out = loss_out_final + 0.5 * loss_out1 + 0.3 * loss_out2 + 0.2 * loss_out3
-            loss_list.append(loss_out)
-            loss_item_list.append(f"{loss_out.item():.5f}")
-        
-        train_loss = sum(loss_list)
-        return train_loss, loss_item_list
-    
-    def mt_loss(self, train_preds, ema_preds, train_masks, epoch):
-        loss_list = []
-        loss_item_list = []
+
         lb = self.args['labeled_batch_size']
         assert len(self.loss_funcs) != 0, "请指定损失函数`self.loss_funcs`"
         for loss in self.loss_funcs:
             loss_out = loss(train_preds[0][:lb], train_masks[:lb])
             loss_list.append(loss_out)
-            loss_item_list.append(f"{loss_out.item():.5f}")
+            loss_item_list.append(f"{loss_out.item():.5f}") # bce + dice loss for labeled data
         supervised_loss = sum(loss_list)
-        
-        consistency_loss = self.mes_loss(train_preds[0][lb:], ema_preds[0])
-        consistency_loss_2 = self.mes_loss(train_preds[1][lb:], ema_preds[1])
-        consistency_loss_4 = self.mes_loss(train_preds[2][lb:], ema_preds[2])
-        consistency_loss_8 = self.mes_loss(train_preds[3][lb:], ema_preds[3])
-        consistency_loss_16 = self.mes_loss(train_preds[4][lb:], ema_preds[4])
-        consistency_loss_32 = self.mes_loss(train_preds[5][lb:], ema_preds[5])
-        consistency_loss = consistency_loss + 0.5 * consistency_loss_2 \
-                                            + 0.5 * consistency_loss_4 \
-                                            + 0.5 * consistency_loss_8 \
-                                            + 0.5 * consistency_loss_16 \
-                                            + 0.5 * consistency_loss_32                                            
-
-        consistency_weight = self.get_current_consistency_weight(epoch)
-        train_loss = 0.5 * supervised_loss + consistency_weight * consistency_loss
-        return train_loss, loss_item_list, supervised_loss, consistency_loss, consistency_weight
+        # rotation self-supervised loss for labeled and unlabeled data
+        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
+        # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:])
+        train_loss = supervised_loss + self.args['rot_loss_weight'] * rotation_loss
+        return train_loss, loss_item_list, rotation_loss
     
-    def get_current_consistency_weight(self, epoch):
-        # Consistency ramp-up from https://arxiv.org/abs/1610.02242
-        return self.args['consistency'] * Ramper.sigmoid_rampup(epoch, self.args['consistency_rampup'])
-    
-    def update_ema_variables(self, global_step):
-        # Use the true average until the exponential average is more correct
-        alpha = self.args['ema_decay']
-        alpha = min(1 - 1 / (global_step + 1), alpha)
-        for ema_param, param in zip(self.ema_net.parameters(), self.net.parameters()):
-            # update params in current device (cpu/cuda:)
-            ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
-
     def train(self):
         if not self.only_test:
-            self.ema_net.train()
+            self.net.train()
             for curr_epoch in range(self.start_epoch, self.end_epoch):
-                self.net.train()
                 train_loss_record = AvgMeter()
-                supervised_loss_record = AvgMeter()
-                consistency_loss_record = AvgMeter()
+                rotation_loss_record = AvgMeter()
                 for train_batch_id, train_data in enumerate(self.tr_loader):
                     curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
                     
                     self.opti.zero_grad()
-                    train_inputs, train_depth, *train_other_data = train_data
+                    train_inputs, train_depths, train_masks, *train_leftover = train_data
                     train_inputs = train_inputs.to(self.dev, non_blocking=True)
-                    train_depth = train_depth.to(self.dev, non_blocking=True)
-                    train_other_data = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_other_data ]
-                    train_preds = self.net(train_inputs, train_depth)
-                    lb = self.args['labeled_batch_size']
-
-                    with torch.no_grad():
-                        ema_preds = self.ema_net(train_inputs[lb:], train_depth[lb:])
-
-                    # train_loss, loss_item_list = self.total_loss(train_preds, train_other_data[0])
-                    # train_loss, loss_item_list = self.deep_loss(train_preds, train_other_data)
-                    train_loss, loss_item_list, \
-                    supervised_loss, consistency_loss, consistency_weight \
-                    = self.mt_loss(train_preds, ema_preds, train_other_data[0], curr_epoch)
+                    train_depths = train_depths.to(self.dev, non_blocking=True)
+                    train_masks = train_masks.to(self.dev, non_blocking=True)
+                    train_preds = self.net(train_inputs, train_depths)
+                    
+                    train_loss, loss_item_list, rotation_loss = self.s4l_loss(train_preds, train_masks, train_leftover[0])
                     train_loss.backward()
                     self.opti.step()
-                    self.update_ema_variables(curr_iter)
                     
                     if self.args["sche_usebatch"]:
                         if self.args["lr_type"] == "poly":
@@ -178,31 +123,20 @@ class Solver():
                     # 仅在累计的时候使用item()获取数据
                     train_iter_loss = train_loss.item()
                     train_batch_size = train_inputs.size(0)
-                    # number_train_batch_per_epoch
-                    train_loss_record.update(train_iter_loss, 1)
-                    supervised_loss_record.update(supervised_loss.item(), 1)
-                    consistency_loss_record.update(consistency_loss.item(), 1)
 
-                    
+                    train_loss_record.update(train_iter_loss, 1)
+                    rotation_loss_record.update(rotation_loss, 1)
                     # 显示tensorboard
                     if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
                         self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
+                        self.tb.add_scalar("data/rotloss_avg", rotation_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
-                        self.tb.add_scalar("data/trloss_sup", supervised_loss_record.avg, curr_iter)
-                        self.tb.add_scalar("data/trloss_con", consistency_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
-                        self.tb.add_scalar("data/trloss_con_weight", consistency_weight, curr_iter)
-                        
-                        lb = self.args["labeled_batch_size"]
-                        tr_tb_mask = make_grid(train_other_data[0][:lb], nrow=lb, padding=5)
-                        self.tb.add_image("trmasks_labeled", tr_tb_mask, curr_iter)
-
-                        tr_tb_out_1 = make_grid(train_preds[0][:lb], nrow=lb, padding=5)
-                        self.tb.add_image("trpreds_labeled", tr_tb_out_1, curr_iter)
-                        tr_tb_out_2 = make_grid(train_preds[0][lb:], nrow=train_batch_size - lb, padding=5)
-                        self.tb.add_image("trpreds_unlabeled", tr_tb_out_2, curr_iter)
-                        tr_tb_out_3 = make_grid(ema_preds[0], nrow=train_batch_size - lb, padding=5)
-                        self.tb.add_image("emapreds_unlabeled", tr_tb_out_3, curr_iter)
+                        tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
+                        self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
+                        tr_tb_out_1 = make_grid(train_preds, nrow=train_batch_size, padding=5)
+                        self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
+                    
                     # 记录每一次迭代的数据
                     if (self.args["print_freq"] > 0 and (curr_iter + 1) % self.args["print_freq"] == 0):
                         log = (
@@ -210,7 +144,7 @@ class Solver():
                             f"[{self.model_name}]"
                             f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
                             f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
-                            f"0.5*{loss_item_list}+({consistency_weight:.5f}*{consistency_loss:.5f})]"
+                            f"{loss_item_list}+({self.args['rot_loss_weight']}*{rotation_loss})]"
                         )
                         print(log)
                         make_log(self.path["tr_log"], log)
@@ -229,7 +163,7 @@ class Solver():
                     state_net_path=self.path['final_state_net']
                 )  # 保存参数
                 self.validate(curr_epoch)
-
+        
         total_results = {}
         for data_name, data_path in self.te_data_list.items():
             construct_print(f"Testing with testset: {data_name}")
@@ -269,7 +203,7 @@ class Solver():
            construct_print('Update best epoch')
            construct_print('Epoch {} with best validating results: {}'.format(curr_epoch, self.best_results))
         construct_print('Finish validating')
-
+    
     def test(self, save_pre):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
@@ -420,7 +354,6 @@ class Solver():
             'arch': self.args["NET"],
             'epoch': current_epoch,
             'net_state': self.net.state_dict(),
-            'ema_net_state': self.ema_net.state_dict(),
             'opti_state': self.opti.state_dict(),
             'sche_state': self.sche.state_dict()
         }
@@ -435,8 +368,8 @@ class Solver():
             new_filename0 = os.path.join(new_dirname, basename0)
             new_filename1 = os.path.join(new_dirname, basename1)
             torch.save(state_dict, new_filename0)
-            torch.save(self.net.state_dict(), new_filename1)            
-    
+            torch.save(self.net.state_dict(), new_filename1) 
+
     def resume_checkpoint(self, load_path, mode='all'):
         """
         从保存节点恢复模型
@@ -454,7 +387,6 @@ class Solver():
                 if self.args["NET"] == checkpoint['arch']:
                     self.start_epoch = checkpoint['epoch']
                     self.net.load_state_dict(checkpoint['net_state'])
-                    self.ema_net.load_state_dict(checkpoint['ema_net_state'])
                     self.opti.load_state_dict(checkpoint['opti_state'])
                     self.sche.load_state_dict(checkpoint['sche_state'])
                     construct_print(f"Loaded '{load_path}' "
