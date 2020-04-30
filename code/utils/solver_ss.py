@@ -105,13 +105,13 @@ class Solver():
                     curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
                     
                     self.opti.zero_grad()
-                    train_inputs, train_depths, train_masks, *train_leftover = train_data
-                    train_inputs = train_inputs.to(self.dev, non_blocking=True)
+                    train_images, train_depths, train_masks, *train_leftover = train_data
+                    train_images = train_images.to(self.dev, non_blocking=True)
                     train_depths = train_depths.to(self.dev, non_blocking=True)
                     train_masks = train_masks.to(self.dev, non_blocking=True)
                     train_leftover = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_leftover ]
                     
-                    train_preds = self.net(train_inputs, train_depths)
+                    train_preds = self.net(train_images, train_depths)
                     
                     train_loss, loss_item_list, rotation_loss = self.s4l_loss(train_preds, train_masks, train_leftover[0])
                     train_loss.backward()
@@ -125,17 +125,20 @@ class Solver():
                     
                     # 仅在累计的时候使用item()获取数据
                     train_iter_loss = train_loss.item()
-                    train_batch_size = train_inputs.size(0)
+                    train_batch_size = train_images.size(0)
 
                     train_loss_record.update(train_iter_loss, 1)
                     rotation_loss_record.update(rotation_loss, 1)
+                    lb = self.args['labeled_batch_size']
                     # 显示tensorboard
                     if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
                         self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/rotloss_avg", rotation_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
                         self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
-                        tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
+                        tr_tb_image = make_grid(train_images, nrow=train_batch_size, padding=5)
+                        self.tb.add_image("trimages", tr_tb_image, curr_iter)
+                        tr_tb_mask = make_grid(train_masks[:lb], nrow=lb, padding=5)
                         self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
                         tr_tb_out_1 = make_grid(train_preds[0], nrow=train_batch_size, padding=5)
                         self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
@@ -147,7 +150,7 @@ class Solver():
                             f"[{self.model_name}]"
                             f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
                             f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
-                            f"{loss_item_list}+({self.args['rot_loss_weight']}*{rotation_loss})]"
+                            f"{loss_item_list}+({self.args['rot_loss_weight']:.5f}*{rotation_loss:.5f})]"
                         )
                         print(log)
                         make_log(self.path["tr_log"], log)
