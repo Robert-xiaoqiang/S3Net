@@ -52,7 +52,9 @@ class Solver():
             data_path=self.te_data_path, mode='test', get_length=True
         )
         
-        self.net = self.args[self.args["NET"]]["net"]().to(self.dev)
+        self.net = self.args[self.args["NET"]]["net"]()
+        self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
+        self.net.to(self.dev)        
         self.opti = self.make_optim()
         
         self.end_epoch = self.args["epoch_num"]
