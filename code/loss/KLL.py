@@ -4,6 +4,7 @@ from torch.nn import functional as F
 class KLL(nn.Module):
 	def __init__(self, reduction):
 		super().__init__()
+		print("You are using `KLL`!")
 		self.reduction = reduction
 	def forward(self, input_logits, target_logits):
 		assert input_logits.size() == target_logits.size()

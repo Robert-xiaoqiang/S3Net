@@ -116,7 +116,7 @@ class Solver():
             loss_item_list.append(f"{loss_out.item():.5f}")
         supervised_loss = sum(loss_list)
         rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
-        # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # unlabeled data only
+        # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # unlabeled data only for rotation loss
         consistency_loss = self.mse_loss(train_preds[0][lb:], ema_preds[0])
         # += self.kl_divergence_loss(train_preds[1][lb:], ema_preds[1])
 
@@ -152,6 +152,8 @@ class Solver():
                     train_images, train_depth, train_masks, rotation_labels, *train_leftover = train_data
                     train_images = train_images.to(self.dev, non_blocking=True)
                     train_depth = train_depth.to(self.dev, non_blocking=True)
+                    train_masks = train_masks.to(self.dev, non_blocking=True)
+                    rotation_labels = rotation_labels.to(self.dev, non_blocking=True)
                     train_leftover = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_leftover ]
                     train_preds = self.net(train_images, train_depth)
                     lb = self.args['labeled_batch_size']
@@ -195,7 +197,7 @@ class Solver():
                         self.tb.add_scalar("data/trloss_con_weight", consistency_weight, curr_iter)
                         
                         lb = self.args["labeled_batch_size"]
-                        tr_tb_mask = make_grid(train_leftover[0][:lb], nrow=lb, padding=5)
+                        tr_tb_mask = make_grid(train_masks[:lb], nrow=lb, padding=5)
                         self.tb.add_image("trmasks_labeled", tr_tb_mask, curr_iter)
 
                         tr_tb_out_1 = make_grid(train_preds[0][:lb], nrow=lb, padding=5)

@@ -82,7 +82,7 @@ arg_config = {
     'labeled_batch_size': 4,
     'ema_decay': 0.99,
     'consistency': 1.0,
-    'consistency_rampup': 300,
+    'consistency_rampup': 200,
 
     'is_ss': None, # set in main_ss.pt or main_ss_mt.py
     'rot_loss_weight': 1
@@ -97,7 +97,9 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
-summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
+# summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
+# only unlabeled data rotation loss
+summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
 # summary key solves other varients(supervised only or MT/SS guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
