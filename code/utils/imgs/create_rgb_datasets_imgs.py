@@ -312,8 +312,9 @@ class TrainSSImageFolder(Dataset):
         self.train_mask_transform = transforms.ToTensor()
     
     def __getitem__(self, index):
-        main_index, rotate_index = index // self.times, index % self.times
-
+        # main_index, rotate_index = index // self.times, index % self.times
+        main_index = index
+        rotate_index = np.random.randint(self.times)
         if main_index < len(self.imgs):
             img_path, depth_path, mask_path = self.imgs[main_index]
             
@@ -375,10 +376,12 @@ class TrainSSImageFolder(Dataset):
             return unlabeled_img, unlabeled_depth, unlabeled_mask, unlabeled_rotate_label, unlabeled_img_name             
     
     def __len__(self):
-        return (len(self.imgs) + len(self.unlabeled_imgs)) * self.times
+        return (len(self.imgs) + len(self.unlabeled_imgs))
+        # return (len(self.imgs) + len(self.unlabeled_imgs)) * self.times
 
     def get_primary_secondary_indices(self):
-        return np.arange(len(self.imgs) * self.times), np.arange(len(self.imgs) * self.times, len(self.unlabeled_imgs) * self.times)
+        return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))
+        # return np.arange(len(self.imgs) * self.times), np.arange(len(self.imgs) * self.times, len(self.unlabeled_imgs) * self.times)
 
 
 if __name__ == '__main__':

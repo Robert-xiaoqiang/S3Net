@@ -6,13 +6,14 @@ import numpy as np
 import torch
 from PIL import Image
 from tensorboardX import SummaryWriter
-from torch.nn import BCELoss, MSELoss
+from torch.nn import BCELoss, MSELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD, lr_scheduler
 from torchvision import transforms
 from torchvision.utils import make_grid
 from tqdm import tqdm
 
 from loss.CEL import CEL
+from loss.KLL import KLL
 from utils.imgs.create_loader_imgs import create_loader
 from utils.metric import cal_maxf, cal_pr_mae_meanf, cal_maxe, cal_s
 from utils.misc import Ramper, AvgMeter, construct_print, make_log, write_xlsx
@@ -75,11 +76,13 @@ class Solver():
 
         if not self.only_test:
             # 损失函数
-            self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
+            self.loss_funcs = [BCELoss(reduction = self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
-                self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
-            self.mse_loss = MSELoss(reduction=self.args['reduction']).to(self.dev)
-    
+                self.loss_funcs.append(CEL(reduction = self.args['reduction']).to(self.dev))
+            self.mse_loss = MSELoss(reduction = self.args['reduction']).to(self.dev)
+            self.cross_entropy_loss = CrossEntropyLoss(reduction = self.args['reduction']).to(self.dev)
+            # self.kl_divergence_loss = KLL(reduction = self.args['reduction']).to(self.dev)
+
     # deep supervision
     def deep_loss(self, train_preds, train_leftover):
         loss_list = []
@@ -99,8 +102,10 @@ class Solver():
         
         train_loss = sum(loss_list)
         return train_loss, loss_item_list
-    
-    def mt_loss(self, train_preds, ema_preds, train_masks, epoch):
+    # [0, 1]
+    # segmentation output, rotation prediction output
+    # B*C*shape, B*C*shape    
+    def mt_s4l_loss(self, train_preds, ema_preds, train_masks, rotation_labels, epoch):
         loss_list = []
         loss_item_list = []
         lb = self.args['labeled_batch_size']
@@ -110,22 +115,14 @@ class Solver():
             loss_list.append(loss_out)
             loss_item_list.append(f"{loss_out.item():.5f}")
         supervised_loss = sum(loss_list)
-        
+        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
+        # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # unlabeled data only
         consistency_loss = self.mse_loss(train_preds[0][lb:], ema_preds[0])
-        consistency_loss_2 = self.mse_loss(train_preds[1][lb:], ema_preds[1])
-        consistency_loss_4 = self.mse_loss(train_preds[2][lb:], ema_preds[2])
-        consistency_loss_8 = self.mse_loss(train_preds[3][lb:], ema_preds[3])
-        consistency_loss_16 = self.mse_loss(train_preds[4][lb:], ema_preds[4])
-        consistency_loss_32 = self.mse_loss(train_preds[5][lb:], ema_preds[5])
-        consistency_loss = consistency_loss + 0.5 * consistency_loss_2 \
-                                            + 0.5 * consistency_loss_4 \
-                                            + 0.5 * consistency_loss_8 \
-                                            + 0.5 * consistency_loss_16 \
-                                            + 0.5 * consistency_loss_32                                            
+        # += self.kl_divergence_loss(train_preds[1][lb:], ema_preds[1])
 
         consistency_weight = self.get_current_consistency_weight(epoch)
-        train_loss = 0.5 * supervised_loss + consistency_weight * consistency_loss
-        return train_loss, loss_item_list, supervised_loss, consistency_loss, consistency_weight
+        train_loss = 0.5 * (supervised_loss + self.args['rot_loss_weight'] * rotation_loss) + consistency_weight * consistency_loss
+        return train_loss, loss_item_list, supervised_loss, rotation_loss, consistency_loss, consistency_weight
     
     def get_current_consistency_weight(self, epoch):
         # Consistency ramp-up from https://arxiv.org/abs/1610.02242
@@ -146,26 +143,27 @@ class Solver():
                 self.net.train()
                 train_loss_record = AvgMeter()
                 supervised_loss_record = AvgMeter()
+                rotation_loss_record = AvgMeter()
                 consistency_loss_record = AvgMeter()
                 for train_batch_id, train_data in enumerate(self.tr_loader):
                     curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
                     
                     self.opti.zero_grad()
-                    train_inputs, train_depth, *train_leftover = train_data
-                    train_inputs = train_inputs.to(self.dev, non_blocking=True)
+                    train_images, train_depth, train_masks, rotation_labels, *train_leftover = train_data
+                    train_images = train_images.to(self.dev, non_blocking=True)
                     train_depth = train_depth.to(self.dev, non_blocking=True)
                     train_leftover = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_leftover ]
-                    train_preds = self.net(train_inputs, train_depth)
+                    train_preds = self.net(train_images, train_depth)
                     lb = self.args['labeled_batch_size']
 
                     with torch.no_grad():
-                        ema_preds = self.ema_net(train_inputs[lb:], train_depth[lb:])
+                        ema_preds = self.ema_net(train_images[lb:], train_depth[lb:])
 
                     # train_loss, loss_item_list = self.total_loss(train_preds, train_leftover[0])
                     # train_loss, loss_item_list = self.deep_loss(train_preds, train_leftover)
                     train_loss, loss_item_list, \
-                    supervised_loss, consistency_loss, consistency_weight \
-                    = self.mt_loss(train_preds, ema_preds, train_leftover[0], curr_epoch)
+                    supervised_loss, rotation_loss, consistency_loss, consistency_weight \
+                    = self.mt_s4l_loss(train_preds, ema_preds, train_masks, rotation_labels, curr_epoch)
                     train_loss.backward()
                     self.opti.step()
                     self.update_ema_variables(curr_iter)
@@ -178,16 +176,18 @@ class Solver():
                     
                     # 仅在累计的时候使用item()获取数据
                     train_iter_loss = train_loss.item()
-                    train_batch_size = train_inputs.size(0)
+                    train_batch_size = train_images.size(0)
                     # number_train_batch_per_epoch
                     train_loss_record.update(train_iter_loss, 1)
                     supervised_loss_record.update(supervised_loss.item(), 1)
+                    rotation_loss_record.update(rotation_loss.item(), 1)
                     consistency_loss_record.update(consistency_loss.item(), 1)
 
                     
                     # 显示tensorboard
                     if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
                         self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
+                        self.tb.add_scalar("data/rotloss_avg", rotation_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
                         self.tb.add_scalar("data/trloss_sup", supervised_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trloss_con", consistency_loss_record.avg, curr_iter)
@@ -211,7 +211,7 @@ class Solver():
                             f"[{self.model_name}]"
                             f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
                             f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
-                            f"0.5*{loss_item_list}+({consistency_weight:.5f}*{consistency_loss:.5f})]"
+                            f"0.5*({loss_item_list}+{self.args['rot_loss_weight']:.5f}*{rotation_loss:.5f})+({consistency_weight:.5f}*{consistency_loss:.5f})]"
                         )
                         print(log)
                         make_log(self.path["tr_log"], log)
