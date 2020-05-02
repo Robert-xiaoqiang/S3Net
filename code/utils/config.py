@@ -73,13 +73,13 @@ arg_config = {
     'lr_type': 'poly',
     'lr_decay': 0.9,  # poly
     'use_bigt': True,  # 有时似乎打开好，有时似乎关闭好？
-    'batch_size': 8,  # 要是继续训练, 最好使用相同的batchsize
+    'batch_size': 4,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
-    'gpus': [0, 1],
+    'gpus': [0],
 
     'is_mt': None, # set in main.py or main_mt.py
-    'labeled_batch_size': 4,
+    'labeled_batch_size': 2,
     'ema_decay': 0.99,
     'consistency': 1.0,
     'consistency_rampup': 200,
@@ -97,9 +97,9 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
-# summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
+summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
 # only unlabeled data rotation loss
-summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
+# summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 8 / labeled/unlabeled rotation loss
 # summary key solves other varients(supervised only or MT/SS guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 

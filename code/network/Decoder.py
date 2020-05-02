@@ -14,7 +14,7 @@ class Decoder(nn.Module):
 					self.size * self.size * self.in_planes,
 					self.size * self.size
 				),
-				nn.BatchNorm1d(self.size * self.size),
+				# nn.BatchNorm1d(self.size * self.size),
 				nn.Linear(
 					self.size * self.size,
 					self.num_classes
