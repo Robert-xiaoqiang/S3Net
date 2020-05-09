@@ -37,7 +37,7 @@ arg_config = {
         'exp_name': 'S3CFNet_Res50'
     },    
     
-    'only_test': False,
+    'only_test': True,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
@@ -100,11 +100,10 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
-# summary_key = 'exp-reduce-channel-ss-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 10)
 # summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consistency + labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss
 summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)
-# summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation/rotation consisitency + only unlabeled rotation loss
+# summary_key = 'exp-reduce-channel-ssmt-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation/rotation consisitency + only unlabeled rotation loss
 # summary key solves other varients(supervised only or MT/SS guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
@@ -113,6 +112,9 @@ pth_log_path = os.path.join(ckpt_path, arg_config[arg_config['NET']]['exp_name']
 tb_path = os.path.join(pth_log_path, 'tb')
 save_path = os.path.join(pth_log_path, 'pre')
 pth_path = os.path.join(pth_log_path, 'pth')
+
+if arg_config['only_test']:
+    pth_path = os.path.join(pth_path, 'best')
 
 final_full_model_path = os.path.join(pth_path, "checkpoint_final.pth.tar")
 final_state_path = os.path.join(pth_path, "state_final.pth")

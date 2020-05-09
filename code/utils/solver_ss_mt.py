@@ -81,7 +81,7 @@ class Solver():
                 self.loss_funcs.append(CEL(reduction = self.args['reduction']).to(self.dev))
             self.mse_loss = MSELoss(reduction = self.args['reduction']).to(self.dev)
             self.cross_entropy_loss = CrossEntropyLoss(reduction = self.args['reduction']).to(self.dev)
-            # self.kl_divergence_loss = KLL(reduction = self.args['reduction']).to(self.dev)
+            self.kl_divergence_loss = KLL(reduction = self.args['reduction']).to(self.dev)
 
     # deep supervision
     def deep_loss(self, train_preds, train_leftover):
@@ -118,7 +118,7 @@ class Solver():
         rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
         # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # unlabeled data only for rotation loss
         consistency_loss = self.mse_loss(train_preds[0][lb:], ema_preds[0])
-        # += self.kl_divergence_loss(train_preds[1][lb:], ema_preds[1])
+        consistency_loss += self.kl_divergence_loss(train_preds[1][lb:], ema_preds[1])
 
         consistency_weight = self.get_current_consistency_weight(epoch)
         train_loss = 0.5 * (supervised_loss + self.args['rot_loss_weight'] * rotation_loss) + consistency_weight * consistency_loss
