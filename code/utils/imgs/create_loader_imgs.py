@@ -44,6 +44,7 @@ def create_loader(data_path, mode, get_length=False, prefix=('.jpg', '.png')):
                     pin_memory=True
                 )
         elif arg_config['is_ss']:
+            # add rotation self-supervised label
             construct_print('You are using `Self-Supervised training`!')
             train_set = TrainSSImageFolder(data_path,
                                          unlabeled_root = arg_config['rgb_data']['unlabeled_path'],

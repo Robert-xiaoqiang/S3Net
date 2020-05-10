@@ -37,7 +37,7 @@ arg_config = {
         'exp_name': 'S3CFNet_Res50'
     },    
     
-    'only_test': True,
+    'only_test': False,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
@@ -85,7 +85,7 @@ arg_config = {
     'consistency_rampup': 200,
 
     'is_ss': None, # set in main_ss.pt or main_ss_mt.py
-    'rot_loss_weight': 0.1
+    'rot_loss_weight': 0.01
 }
 ################################################################################
 
@@ -100,10 +100,11 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
+summary_key = 'exp-reduce-channel-ss-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.01)
 # summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consistency + labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss
-summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)
-# summary_key = 'exp-reduce-channel-ssmt-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation/rotation consisitency + only unlabeled rotation loss
+# summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)
+# summary_key = 'exp-reduce-channel-ssmt-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation/rotation consisitency + only unlabeled rotation loss(rot weight 0.1)
 # summary key solves other varients(supervised only or MT/SS guiding unlabel data)
 ckpt_path = os.path.join(os.path.dirname(proj_root), 'output', summary_key)
 
