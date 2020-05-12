@@ -76,7 +76,7 @@ arg_config = {
     'batch_size': 4,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
-    'gpus': [0],
+    'gpus': [0, 1],
 
     'is_mt': None, # set in main.py or main_mt.py
     'labeled_batch_size': 2,
@@ -85,12 +85,12 @@ arg_config = {
     'consistency_rampup': 200,
 
     'is_ss': None, # set in main_ss.pt or main_ss_mt.py
-    'rot_loss_weight': 0.01
+    'rot_loss_weight': 10
 }
 ################################################################################
 
 # summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras / batch 4
-# summary_key = 'exp-reduce-channel-mt-2-0' #: 1 time middle channel njud-nlpr 500 eras / 150 rampup / fine tune
+# summary_key = 'exp-reduce-channel-mt-0' #: 1 time middle channel njud-nlpr 500 eras / 150 rampup / fine tune
 # summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 4)
 # summary_key = 'exp-reduce-channel-mt-3' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 8)
@@ -100,7 +100,8 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
-summary_key = 'exp-reduce-channel-ss-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.01)
+# summary_key = 'exp-reduce-channel-ss-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.01)
+summary_key = 'exp-reduce-channel-ss-4' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 10)
 # summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consistency + labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)
