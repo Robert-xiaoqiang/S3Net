@@ -115,8 +115,9 @@ class Solver():
             loss_list.append(loss_out)
             loss_item_list.append(f"{loss_out.item():.5f}")
         supervised_loss = sum(loss_list)
-        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
-        # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # unlabeled data only for rotation loss
+        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels) if self.args['is_labeled_rotation'] else \
+                        self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # only unlabeled data for rotation loss
+        
         consistency_loss = self.mse_loss(train_preds[0][lb:], ema_preds[0])
         consistency_loss += self.kl_divergence_loss(train_preds[1][lb:], ema_preds[1])
 

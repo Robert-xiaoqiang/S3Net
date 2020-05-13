@@ -92,8 +92,8 @@ class Solver():
         supervised_loss = sum(loss_list)
         # rotation self-supervised loss for labeled and unlabeled data
 
-        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels)
-        # rotation_loss = self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:])
+        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels) if self.args['is_labeled_rotation'] else \
+                        self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # only unlabeled data for rotation loss
         train_loss = supervised_loss + self.args['rot_loss_weight'] * rotation_loss
         return train_loss, loss_item_list, rotation_loss
     

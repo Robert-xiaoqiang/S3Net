@@ -48,8 +48,9 @@ def create_loader(data_path, mode, get_length=False, prefix=('.jpg', '.png')):
             construct_print('You are using `Self-Supervised training`!')
             train_set = TrainSSImageFolder(data_path,
                                          unlabeled_root = arg_config['rgb_data']['unlabeled_path'],
-                                         in_size = arg_config["input_size"],
+                                         in_size = arg_config['input_size'],
                                          prefix = prefix,
+                                         is_labeled_rotation = arg_config['is_labeled_rotation'],
                                          use_bigt = arg_config['use_bigt'],
                                          rotations = (0, 90, 180, 270))
             train_primary_indices, train_secondary_indices = train_set.get_primary_secondary_indices()

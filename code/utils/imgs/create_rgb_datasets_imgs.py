@@ -277,8 +277,10 @@ class TrainMTImageFolder(Dataset):
         return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))
 
 class TrainSSImageFolder(Dataset):
-    def __init__(self, root, unlabeled_root, in_size, prefix, use_bigt=False, rotations = (0, 90, 180, 270)):
+    def __init__(self, root, unlabeled_root, in_size, prefix, is_labeled_rotation,
+                 use_bigt=False, rotations = (0, 90, 180, 270)):
         self.in_size = in_size
+        self.is_labeled_rotation = is_labeled_rotation
         self.use_bigt = use_bigt
         self.rotations = rotations
         self.times = len(rotations)
@@ -329,9 +331,10 @@ class TrainSSImageFolder(Dataset):
                 mask = mask.convert('L')
 
             img, depth, mask = self.train_joint_transform(img, depth, mask)
-            img = img.rotate(self.rotations[rotate_index])
-            depth = depth.rotate(self.rotations[rotate_index])
-            mask = mask.rotate(self.rotations[rotate_index])
+            if self.is_labeled_rotation:
+                img = img.rotate(self.rotations[rotate_index])
+                depth = depth.rotate(self.rotations[rotate_index])
+                mask = mask.rotate(self.rotations[rotate_index])
 
             mask = self.train_mask_transform(mask).float()
             img = self.train_img_transform(img).float()
