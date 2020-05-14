@@ -53,7 +53,7 @@ class Solver():
         )
         
         self.net = self.args[self.args["NET"]]["net"]()
-        self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
+        # self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
         self.net.to(self.dev)        
         self.opti = self.make_optim()
         
@@ -166,12 +166,16 @@ class Solver():
             if not os.path.exists(self.save_path):
                 construct_print(f"{self.save_path} do not exist. Let's create it.")
                 os.makedirs(self.save_path)
-            results = self.test(save_pre=self.save_pre)
-            msg = (f"Results on the testset({data_name}:'{data_path}'): {results}")
-            construct_print(msg)
-            make_log(self.path["te_log"], msg)
-            
-            total_results[data_name.upper()] = results
+            if not self.args['test_unlabeled']:
+                results = self.test(save_pre=self.save_pre)
+                msg = (f"Results on the testset({data_name}:'{data_path}'): {results}")
+                construct_print(msg)
+                make_log(self.path["te_log"], msg)
+                
+                total_results[data_name.upper()] = results
+            else:
+                construct_print('Test on unlabeled data, output nothing')
+                self.test_unlabeled(save_pre=self.save_pre)
         # save result into xlsx file.
         # write_xlsx(self.model_name, total_results)
 
@@ -195,7 +199,7 @@ class Solver():
            construct_print('Update best epoch')
            construct_print('Epoch {} with best validating results: {}'.format(curr_epoch, self.best_results))
         construct_print('Finish validating')
-    
+  
     def test(self, save_pre):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
@@ -254,7 +258,32 @@ class Solver():
                    "MAXE": maxes.avg, "S": ss.avg,
                    "MAE": maes.avg}
         return results
-    
+  
+    def test_unlabeled(self, save_pre):
+        if self.only_test:
+            self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
+        self.net.eval()
+        
+        loader = self.te_loader
+        
+        tqdm_iter = tqdm(enumerate(loader), total=len(loader), leave=False)
+        for test_batch_id, test_data in tqdm_iter:
+            tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
+            with torch.no_grad():
+                in_imgs, in_depths, in_names = test_data
+                in_imgs = in_imgs.to(self.dev, non_blocking=True)
+                in_depths = in_depths.to(self.dev, non_blocking=True)
+                outputs = self.net(in_imgs, in_depths)
+            
+            outputs_np = outputs.cpu().detach()
+            
+            for item_id, out_item in enumerate(outputs_np):
+                out_img = self.to_pil(out_item)
+               
+                if save_pre:
+                    oimg_path = osp.join(self.save_path, in_names[item_id] + ".png")
+                    out_img.save(oimg_path)
+     
     def make_scheduler(self):
         total_num = self.iter_num if self.args['sche_usebatch'] else self.end_epoch
         if self.args["lr_type"] == "poly":

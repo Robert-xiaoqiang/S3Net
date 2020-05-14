@@ -11,6 +11,8 @@ proj_root = os.path.dirname(os.path.dirname(__file__))
 datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
 
 unlabeled_path = os.path.join(datasets_root, 'SUN-RGBD', 'train_data')
+
+unlabeled_test_path = os.path.join(datasets_root, 'SUN-RGBD', 'test_data')
 njud_path = os.path.join(datasets_root, 'NJUD', 'test_data')
 nlpr_path = os.path.join(datasets_root, 'NLPR', 'test_data')
 sip_path = os.path.join(datasets_root, 'SIP')
@@ -27,7 +29,7 @@ test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'S3CFNet_Res50',  # 决定使用哪一个网络
+    'NET': 'SCFNet_Res50',  # 决定使用哪一个网络
     'SCFNet_Res50': {
         'net': SCFNet_Res50,
         'exp_name': 'SCFNet_Res50'
@@ -37,7 +39,8 @@ arg_config = {
         'exp_name': 'S3CFNet_Res50'
     },    
     
-    'only_test': False,
+    'only_test': True,
+    'test_unlabeled': True,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
@@ -51,12 +54,13 @@ arg_config = {
         'val_data_path': val_path,
         'te_data_path': test_path,
         'te_data_list': {
-            'njud': njud_path,
-            'nlpr': nlpr_path,
-            'sip': sip_path,
-            'rgbd135': rgbd135_path,
-            'stereo': stereo_path,
-            'lfsd': lfsd_path
+            'unlabeled': unlabeled_test_path
+            # 'njud': njud_path,
+            # 'nlpr': nlpr_path,
+            # 'sip': sip_path,
+            # 'rgbd135': rgbd135_path,
+            # 'stereo': stereo_path,
+            # 'lfsd': lfsd_path
         },
     },
     'tb_update': 10,  # >0 则使用tensorboard
@@ -95,7 +99,7 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-3' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 8)
-# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
+summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
 # summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
@@ -105,7 +109,7 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-ss-4' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 10)
 # summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consistency + labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss
-summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)
+# summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)
 # summary_key = 'exp-reduce-channel-ssmt-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation/rotation consisitency + only unlabeled rotation loss(rot weight 0.1)
 # summary_key = 'exp-reduce-channel-ssmt-4' #: 1 time middle channel njud-nlpr 350(200) -> 500(300) eras / batch 4 / segmentation/rotation consisitency + only unlabeled rotation loss(rot weight 0.1)
 # summary key solves other varients(supervised only or MT/SS guiding unlabel data)

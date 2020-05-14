@@ -123,6 +123,40 @@ class TestImageFolder(Dataset):
         return len(self.imgs)
 
 
+class TestUnlabeledImageFolder(Dataset):
+    def __init__(self, root, in_size, prefix):
+        if os.path.isdir(root):
+            construct_print(f"{root} is an image folder, we will test on it.")
+            self.imgs = _make_unlabeled_dataset(root, split = 'test')
+        elif os.path.isfile(root):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+        self.test_img_trainsform = transforms.Compose([
+            transforms.Resize((in_size, in_size)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.test_depth_trainsform = transforms.Compose([
+            transforms.Resize((in_size, in_size)),
+            transforms.ToTensor()
+        ])
+    def __getitem__(self, index):
+        img_path, depth_path= self.imgs[index]
+        
+        img = Image.open(img_path).convert('RGB')
+        depth = Image.open(depth_path).convert('L')
+        img_name = (img_path.split(os.sep)[-1]).split('.')[0]
+        
+        img = self.test_img_trainsform(img).float()
+        depth = self.test_depth_trainsform(depth).float()
+        depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6))
+        return img, depth, img_name
+    
+    def __len__(self):
+        return len(self.imgs)
+
+
 def _make_train_dataset_from_list(list_filepath, prefix=('.jpg', '.png')):
     # list_filepath = '/home/lart/Datasets/RGBDSaliency/FinalSet/rgbd_train_jw.lst'
     img_list = _read_list_from_file(list_filepath)
