@@ -29,7 +29,7 @@ test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'SCFNet_Res50',  # 决定使用哪一个网络
+    'NET': 'S3CFNet_Res50',  # 决定使用哪一个网络
     'SCFNet_Res50': {
         'net': SCFNet_Res50,
         'exp_name': 'SCFNet_Res50'
@@ -40,7 +40,7 @@ arg_config = {
     },    
     
     'only_test': True,
-    'test_unlabeled': True,
+    'test_unlabeled': False,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
@@ -54,9 +54,9 @@ arg_config = {
         'val_data_path': val_path,
         'te_data_path': test_path,
         'te_data_list': {
-            'unlabeled': unlabeled_test_path
-            # 'njud': njud_path,
-            # 'nlpr': nlpr_path,
+            # 'unlabeled': unlabeled_test_path
+            'njud': njud_path,
+            'nlpr': nlpr_path
             # 'sip': sip_path,
             # 'rgbd135': rgbd135_path,
             # 'stereo': stereo_path,
@@ -99,14 +99,17 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-3' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 8)
-summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
+# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
+
 # summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss
-# summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
+
+summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
 # summary_key = 'exp-reduce-channel-ss-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.01)
 # summary_key = 'exp-reduce-channel-ss-4' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 10)
+
 # summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consistency + labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss(rot weight 0.1)

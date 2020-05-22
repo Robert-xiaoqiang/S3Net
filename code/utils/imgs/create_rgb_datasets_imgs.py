@@ -116,7 +116,7 @@ class TestImageFolder(Dataset):
         
         img = self.test_img_trainsform(img).float()
         depth = self.test_depth_trainsform(depth).float()
-        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
+        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
         return img, depth, mask_path, img_name
     
     def __len__(self):
@@ -150,7 +150,7 @@ class TestUnlabeledImageFolder(Dataset):
         
         img = self.test_img_trainsform(img).float()
         depth = self.test_depth_trainsform(depth).float()
-        depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6))
+        depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
         return img, depth, img_name
     
     def __len__(self):
@@ -211,7 +211,10 @@ class TrainImageFolder(Dataset):
         mask = self.train_mask_transform(mask).float()
         img = self.train_img_transform(img).float()
         depth = self.train_depth_transform(depth).float()
-        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
+        ###########################################
+        # depth 255 normalized already(NJUD + NLPR)
+        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6))
+        ###########################################
         if self.use_bigt:
             mask = mask.ge(0.5).float()  # 二值化
         
@@ -275,7 +278,7 @@ class TrainMTImageFolder(Dataset):
             mask = self.train_mask_transform(mask).float()
             img = self.train_img_transform(img).float()
             depth = self.train_depth_transform(depth).float()
-            # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
+            # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6))
             if self.use_bigt:
                 mask = mask.ge(0.5).float()  # 二值化
             
@@ -297,7 +300,7 @@ class TrainMTImageFolder(Dataset):
             unlabeled_img, unlabeled_depth = self.train_joint_transform(unlabeled_img, unlabeled_depth)
             unlabeled_img = self.train_img_transform(unlabeled_img).float()
             unlabeled_depth = self.train_depth_transform(unlabeled_depth).float()
-            unlabeled_depth = (unlabeled_depth - torch.min(unlabeled_depth)) / (torch.max(unlabeled_depth) - torch.min(unlabeled_depth) + torch.tensor(1.0e-6))
+            unlabeled_depth = (unlabeled_depth - torch.min(unlabeled_depth)) / (torch.max(unlabeled_depth) - torch.min(unlabeled_depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
             unlabeled_mask = torch.zeros((1, self.in_size, self.in_size)).float()
             
             unlabeled_img_name = (unlabeled_img_path.split(os.sep)[-1]).split('.')[0]
@@ -373,7 +376,7 @@ class TrainSSImageFolder(Dataset):
             mask = self.train_mask_transform(mask).float()
             img = self.train_img_transform(img).float()
             depth = self.train_depth_transform(depth).float()
-            # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth))
+            # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6))
             if self.use_bigt:
                 mask = mask.ge(0.5).float()  # 二值化
             
@@ -401,7 +404,7 @@ class TrainSSImageFolder(Dataset):
 
             unlabeled_img = self.train_img_transform(unlabeled_img).float()
             unlabeled_depth = self.train_depth_transform(unlabeled_depth).float()
-            unlabeled_depth = (unlabeled_depth - torch.min(unlabeled_depth)) / (torch.max(unlabeled_depth) - torch.min(unlabeled_depth) + torch.tensor(1.0e-6))
+            unlabeled_depth = (unlabeled_depth - torch.min(unlabeled_depth)) / (torch.max(unlabeled_depth) - torch.min(unlabeled_depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
             
             unlabeled_mask = torch.zeros((1, self.in_size, self.in_size)).float() # dummy
 
