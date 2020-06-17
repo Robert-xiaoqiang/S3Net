@@ -7,10 +7,12 @@ from base.ResNet import Backbone_ResNet50_in3
 from base.VGG import Backbone_VGG16_in3
 from models.MyModule import (AIMRGBD, SIM)
 from .Decoder import Decoder
+from .Squeezer import Squeezer
 
 class S3CFNet_Res50(nn.Module):
-    def __init__(self):
+    def __init__(self, inference_study = False):
         super().__init__()
+        self.inference_study = inference_study
         self.rgb_div_2, self.rgb_div_4, self.rgb_div_8, self.rgb_div_16, self.rgb_div_32 = Backbone_ResNet50_in3()
         self.depth_div_2, self.depth_div_4, self.depth_div_8, self.depth_div_16, self.depth_div_32 = Backbone_ResNet50_in3()
         
@@ -35,6 +37,9 @@ class S3CFNet_Res50(nn.Module):
         
         self.classifier = nn.Conv2d(32 * 2, 1, 1)
         self.rotation_classifier = Decoder(64 * 2, 8, 4)
+        self.squeezer = Squeezer()
+
+        self.grad = None
 
     def forward(self, rgb, depth):
         rgb_data_2 = self.rgb_div_2(rgb)
@@ -71,4 +76,15 @@ class S3CFNet_Res50(nn.Module):
         
         out_data_1 = self.upconv1(self.upsample(out_data_2, scale_factor=2))  # 32
         out_data = self.classifier(out_data_1) # resolution identity
-        return out_data.sigmoid(), self.rotation_classifier(in_data_32)
+
+        def extract(g):
+            self.grad = g
+        in_data_2.register_hook(extract)
+
+        if not self.inference_study:
+            return out_data.sigmoid(), self.rotation_classifier(in_data_32)
+        else:
+            return (out_data.sigmoid(), self.rotation_classifier(in_data_32),) + self.squeezer(in_data_2, in_data_4, in_data_8, in_data_16, in_data_32)
+
+    def get_grad(self):
+        return self.grad

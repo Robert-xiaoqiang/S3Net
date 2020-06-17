@@ -4,9 +4,10 @@ from pprint import pprint
 
 import numpy as np
 import torch
-from PIL import Image
+import cv2
+from PIL import Image, ImageEnhance
 from tensorboardX import SummaryWriter
-from torch.nn import BCELoss
+from torch.nn import BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD, lr_scheduler
 from torchvision import transforms
 from torchvision.utils import make_grid
@@ -48,16 +49,13 @@ class Solver():
         self.tr_loader = create_loader(
             data_path=self.tr_data_path, mode='train', get_length=False
         )
-
-        # validate use, here we can omit it
-        # self.te_loader, self.te_length = create_loader(
-        #     data_path=self.te_data_path, mode='test', get_length=True
-        # )
-        self.te_loader = self.te_length = None
+        self.te_loader, self.te_length = create_loader(
+            data_path=self.te_data_path, mode='test', get_length=True
+        )
         
-        self.net = self.args[self.args["NET"]]["net"]()
-        # self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
-        self.net.to(self.dev)        
+        self.net = self.args[self.args["NET"]]["net"](self.args['inference_study'])
+        self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
+        self.net.to(self.dev)
         self.opti = self.make_optim()
         
         self.end_epoch = self.args["epoch_num"]
@@ -78,36 +76,47 @@ class Solver():
             self.loss_funcs = [BCELoss(reduction=self.args['reduction']).to(self.dev)]
             if self.args['use_aux_loss']:
                 self.loss_funcs.append(CEL(reduction=self.args['reduction']).to(self.dev))
-    
-    def total_loss(self, train_preds, train_alphas):
+            self.cross_entropy_loss = CrossEntropyLoss(reduction=self.args['reduction']).to(self.dev)
+    # [0, 1]
+    # segmentation output, rotation prediction output
+    # B*C*shape, B*C*shape
+    def s4l_loss(self, train_preds, train_masks, rotation_labels):
         loss_list = []
         loss_item_list = []
-        
+
+        lb = self.args['labeled_batch_size']
         assert len(self.loss_funcs) != 0, "请指定损失函数`self.loss_funcs`"
         for loss in self.loss_funcs:
-            loss_out = loss(train_preds, train_alphas)
+            loss_out = loss(train_preds[0][:lb], train_masks[:lb])
             loss_list.append(loss_out)
-            loss_item_list.append(f"{loss_out.item():.5f}")
-        
-        train_loss = sum(loss_list)
-        return train_loss, loss_item_list
+            loss_item_list.append(f"{loss_out.item():.5f}") # bce + dice loss for labeled data
+        supervised_loss = sum(loss_list)
+        # rotation self-supervised loss for labeled and unlabeled data
+
+        rotation_loss = self.cross_entropy_loss(train_preds[1], rotation_labels) if self.args['is_labeled_rotation'] else \
+                        self.cross_entropy_loss(train_preds[1][lb:], rotation_labels[lb:]) # only unlabeled data for rotation loss
+        train_loss = supervised_loss + self.args['rot_loss_weight'] * rotation_loss
+        return train_loss, loss_item_list, rotation_loss
     
     def train(self):
         if not self.only_test:
             self.net.train()
             for curr_epoch in range(self.start_epoch, self.end_epoch):
                 train_loss_record = AvgMeter()
+                rotation_loss_record = AvgMeter()
                 for train_batch_id, train_data in enumerate(self.tr_loader):
                     curr_iter = curr_epoch * len(self.tr_loader) + train_batch_id
                     
                     self.opti.zero_grad()
-                    train_inputs, train_depths, train_masks, *train_leftover = train_data
-                    train_inputs = train_inputs.to(self.dev, non_blocking=True)
+                    train_images, train_depths, train_masks, *train_leftover = train_data
+                    train_images = train_images.to(self.dev, non_blocking=True)
                     train_depths = train_depths.to(self.dev, non_blocking=True)
                     train_masks = train_masks.to(self.dev, non_blocking=True)
-                    train_preds = self.net(train_inputs, train_depths)
+                    train_leftover = [ d.to(self.dev, non_blocking=True) if torch.is_tensor(d) else d for d in train_leftover ]
                     
-                    train_loss, loss_item_list = self.total_loss(train_preds, train_masks)
+                    train_preds = self.net(train_images, train_depths)
+                    
+                    train_loss, loss_item_list, rotation_loss = self.s4l_loss(train_preds, train_masks, train_leftover[0])
                     train_loss.backward()
                     self.opti.step()
                     
@@ -119,17 +128,22 @@ class Solver():
                     
                     # 仅在累计的时候使用item()获取数据
                     train_iter_loss = train_loss.item()
-                    train_batch_size = train_inputs.size(0)
-                    train_loss_record.update(train_iter_loss, train_batch_size)
-                    
+                    train_batch_size = train_images.size(0)
+
+                    train_loss_record.update(train_iter_loss, 1)
+                    rotation_loss_record.update(rotation_loss, 1)
+                    lb = self.args['labeled_batch_size']
                     # 显示tensorboard
                     if (self.args["tb_update"] > 0 and (curr_iter + 1) % self.args["tb_update"] == 0):
                         self.tb.add_scalar("data/trloss_avg", train_loss_record.avg, curr_iter)
+                        self.tb.add_scalar("data/rotloss_avg", rotation_loss_record.avg, curr_iter)
                         self.tb.add_scalar("data/trloss_iter", train_iter_loss, curr_iter)
                         self.tb.add_scalar("data/trlr", self.opti.param_groups[0]["lr"], curr_iter)
-                        tr_tb_mask = make_grid(train_masks, nrow=train_batch_size, padding=5)
+                        tr_tb_image = make_grid(train_images, nrow=train_batch_size, padding=5)
+                        self.tb.add_image("trimages", tr_tb_image, curr_iter)
+                        tr_tb_mask = make_grid(train_masks[:lb], nrow=lb, padding=5)
                         self.tb.add_image("trmasks", tr_tb_mask, curr_iter)
-                        tr_tb_out_1 = make_grid(train_preds, nrow=train_batch_size, padding=5)
+                        tr_tb_out_1 = make_grid(train_preds[0], nrow=train_batch_size, padding=5)
                         self.tb.add_image("trpreds", tr_tb_out_1, curr_iter)
                     
                     # 记录每一次迭代的数据
@@ -139,7 +153,7 @@ class Solver():
                             f"[{self.model_name}]"
                             f"[Lr:{self.opti.param_groups[0]['lr']:.7f}]"
                             f"[Avg:{train_loss_record.avg:.5f}|Cur:{train_iter_loss:.5f}|"
-                            f"{loss_item_list}]"
+                            f"{loss_item_list}+({self.args['rot_loss_weight']:.5f}*{rotation_loss:.5f})]"
                         )
                         print(log)
                         make_log(self.path["tr_log"], log)
@@ -169,16 +183,20 @@ class Solver():
             if not os.path.exists(self.save_path):
                 construct_print(f"{self.save_path} do not exist. Let's create it.")
                 os.makedirs(self.save_path)
-            if not self.args['test_unlabeled']:
+
+            if self.args['inference_study']:
+                if self.args['test_rotation']:
+                    construct_print('Test for inference study and rotation, output rotation accuracy')
+                    self.test_with_roration_inference_study()
+                else:
+                    construct_print('Test for inference study, donot output metric')
+                    self.test_inference_study()
+            else:
                 results = self.test(save_pre=self.save_pre)
                 msg = (f"Results on the testset({data_name}:'{data_path}'): {results}")
                 construct_print(msg)
                 make_log(self.path["te_log"], msg)
-                
                 total_results[data_name.upper()] = results
-            else:
-                construct_print('Test on unlabeled data, output nothing')
-                self.test_unlabeled(save_pre=self.save_pre)
         # save result into xlsx file.
         # write_xlsx(self.model_name, total_results)
 
@@ -202,7 +220,7 @@ class Solver():
            construct_print('Update best epoch')
            construct_print('Epoch {} with best validating results: {}'.format(curr_epoch, self.best_results))
         construct_print('Finish validating')
-  
+    
     def test(self, save_pre):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
@@ -226,7 +244,7 @@ class Solver():
                 in_depths = in_depths.to(self.dev, non_blocking=True)
                 outputs = self.net(in_imgs, in_depths)
             
-            outputs_np = outputs.cpu().detach()
+            outputs_np = outputs[0].cpu().detach()
             
             for item_id, out_item in enumerate(outputs_np):
                 gimg_path = osp.join(in_mask_paths[item_id])
@@ -261,8 +279,61 @@ class Solver():
                    "MAXE": maxes.avg, "S": ss.avg,
                    "MAE": maes.avg}
         return results
-  
-    def test_unlabeled(self, save_pre):
+
+    def test_with_roration_inference_study(self):
+        if self.only_test:
+            self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
+        self.net.eval()
+        
+        rotations = AvgMeter()
+
+        loader = self.te_loader
+        
+        tqdm_iter = tqdm(enumerate(loader), total=len(loader), leave=False)
+        for test_batch_id, test_data in tqdm_iter:
+            tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
+            # with torch.no_grad():
+            in_imgs, in_depths, in_mask_paths, in_rot_labels, in_names = test_data
+            in_imgs = in_imgs.to(self.dev, non_blocking=True)
+            in_depths = in_depths.to(self.dev, non_blocking=True)
+            in_rot_labels = in_rot_labels.to(self.dev, non_blocking=True)
+            outputs = self.net(in_imgs, in_depths)
+
+            rot_pre = torch.argmax(outputs[1], dim = 1)
+            rot_gt = in_rot_labels
+            tp = torch.where(rot_pre == rot_gt)[0].shape[0]
+            rotations.update(float(tp) / self.args['batch_size'])
+
+            for item_id, feature in enumerate(outputs[2]):
+                target_score = outputs[1][item_id, rot_pre[item_id]]
+                target_score.backward(retain_graph = True)
+                grad = self.net.module.get_grad()
+                pooled_grad = torch.nn.functional.adaptive_avg_pool2d(grad, (1, 1))
+                weighted_feature = feature * pooled_grad[item_id]
+
+                mean_feature = torch.mean(weighted_feature, dim = 0).cpu().detach()
+                mean_feature = torch.max(mean_feature, torch.FloatTensor([ 0.0 ]))
+                mean_feature /= torch.max(mean_feature)
+
+                feature_img = self.to_pil(mean_feature)
+
+                fimg_dir = os.path.join(self.save_path, in_names[item_id])
+                os.makedirs(fimg_dir, exist_ok = True)
+
+                original_img = self.to_pil(in_imgs[item_id].cpu().detach()).resize(feature_img.size)
+                
+                feature_img = cv2.applyColorMap(np.asarray(feature_img), cv2.COLORMAP_JET)
+                superimposed_fimg = feature_img * 0.4 + np.asarray(original_img)
+
+                fimg_path = os.path.join(fimg_dir, 'heatmap.png')
+                Image.fromarray(feature_img).save(fimg_path)
+
+                fimg_path = os.path.join(fimg_dir, 'superimposed.png')
+                cv2.imwrite(fimg_path, superimposed_fimg)
+
+        print('test rotation accuracy: {:.4f}'.format(rotations.avg))
+
+    def test_inference_study(self):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
         self.net.eval()
@@ -272,21 +343,27 @@ class Solver():
         tqdm_iter = tqdm(enumerate(loader), total=len(loader), leave=False)
         for test_batch_id, test_data in tqdm_iter:
             tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
-            with torch.no_grad():
-                in_imgs, in_depths, in_names = test_data
-                in_imgs = in_imgs.to(self.dev, non_blocking=True)
-                in_depths = in_depths.to(self.dev, non_blocking=True)
-                outputs = self.net(in_imgs, in_depths)
-            
-            outputs_np = outputs.cpu().detach()
-            
-            for item_id, out_item in enumerate(outputs_np):
-                out_img = self.to_pil(out_item)
-               
-                if save_pre:
-                    oimg_path = osp.join(self.save_path, in_names[item_id] + ".png")
-                    out_img.save(oimg_path)
-     
+            # with torch.no_grad():
+            in_imgs, in_depths, in_mask_paths, in_names = test_data
+            in_imgs = in_imgs.to(self.dev, non_blocking=True)
+            in_depths = in_depths.to(self.dev, non_blocking=True)
+            outputs = self.net(in_imgs, in_depths)
+            # [B*H*W] * #F
+            for fi, f in enumerate(outputs[2:], 1):
+                # B(*C)*H*W
+                f = f.cpu().detach()
+                for item_id, out_item in enumerate(f):
+                    feature = torch.max(f[item_id], torch.FloatTensor([ 0.0 ]))
+                    feature /= torch.max(feature)
+
+                    fimg = self.to_pil(feature)
+
+                    fimg_dir = os.path.join(self.save_path, in_names[item_id])
+                    os.makedirs(fimg_dir, exist_ok = True)
+
+                    fimg_path = os.path.join(fimg_dir, str(fi) + '.png')
+                    fimg.save(fimg_path)
+
     def make_scheduler(self):
         total_num = self.iter_num if self.args['sche_usebatch'] else self.end_epoch
         if self.args["lr_type"] == "poly":

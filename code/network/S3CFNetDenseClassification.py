@@ -6,15 +6,13 @@ from base.BaseOps import cus_sample, upsample_add
 from base.ResNet import Backbone_ResNet50_in3
 from base.VGG import Backbone_VGG16_in3
 from models.MyModule import (AIMRGBD, SIM)
-
+from .Decoder import DenseDecoder
 from .Squeezer import Squeezer
 
-class SCFNet_Res50(nn.Module):
+class S3CFNetDenseClassification_Res50(nn.Module):
     def __init__(self, inference_study = False):
         super().__init__()
-
         self.inference_study = inference_study
-
         self.rgb_div_2, self.rgb_div_4, self.rgb_div_8, self.rgb_div_16, self.rgb_div_32 = Backbone_ResNet50_in3()
         self.depth_div_2, self.depth_div_4, self.depth_div_8, self.depth_div_16, self.depth_div_32 = Backbone_ResNet50_in3()
         
@@ -38,8 +36,11 @@ class SCFNet_Res50(nn.Module):
         self.upconv1 = BasicConv2d(32 * 2, 32 * 2, kernel_size=3, stride=1, padding=1)
         
         self.classifier = nn.Conv2d(32 * 2, 1, 1)
+        self.rotation_classifier = DenseDecoder(64 * 2, 8, 4)
         self.squeezer = Squeezer()
-    
+
+        self.grad = None
+
     def forward(self, rgb, depth):
         rgb_data_2 = self.rgb_div_2(rgb)
         rgb_data_4 = self.rgb_div_4(rgb_data_2)
@@ -74,9 +75,16 @@ class SCFNet_Res50(nn.Module):
         out_data_2 = self.upconv2(self.sim2(out_data_2) + out_data_2)  # 64
         
         out_data_1 = self.upconv1(self.upsample(out_data_2, scale_factor=2))  # 32
-        out_data = self.classifier(out_data_1)
-        
+        out_data = self.classifier(out_data_1) # resolution identity
+
+        def extract(g):
+            self.grad = g
+        in_data_2.register_hook(extract)
+
         if not self.inference_study:
-            return out_data.sigmoid()
+            return out_data.sigmoid(), self.rotation_classifier(in_data_2, in_data_4, in_data_8, in_data_16, in_data_32)
         else:
-            return (out_data.sigmoid(),) + self.squeezer(in_data_2, in_data_4, in_data_8, in_data_16, in_data_32)
+            return (out_data.sigmoid(), self.rotation_classifier(in_data_2, in_data_4, in_data_8, in_data_16, in_data_32), in_data_2)# + self.squeezer(in_data_32)
+
+    def get_grad(self):
+        return self.grad

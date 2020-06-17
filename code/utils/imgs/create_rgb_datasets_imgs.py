@@ -67,6 +67,26 @@ def _make_dataset(root, split):
             for img_name in img_list]
 
 
+def _make_fdp_dataset(root):
+    img_path = os.path.join(root, 'RGB')
+    depth_path = os.path.join(root, 'depth')
+    mask_path = os.path.join(root, 'GT')
+    
+    img_list = os.listdir(img_path)
+    depth_list = os.listdir(depth_path)
+    mask_list = os.listdir(mask_path)
+    
+    img_ext = _get_ext(img_list)
+    depth_ext = _get_ext(depth_list)
+    mask_ext = _get_ext(mask_list)
+    
+    img_list = [os.path.splitext(f)[0] for f in mask_list if f.endswith(mask_ext)]
+    return [(os.path.join(img_path, img_name + img_ext),
+             os.path.join(depth_path, img_name + depth_ext),
+             os.path.join(mask_path, img_name + mask_ext),
+             )
+            for img_name in img_list]
+
 def _read_list_from_file(list_filepath):
     img_list = []
     with open(list_filepath, mode='r', encoding='utf-8') as openedfile:
@@ -112,6 +132,9 @@ class TestImageFolder(Dataset):
         
         img = Image.open(img_path).convert('RGB')
         depth = Image.open(depth_path).convert('L')
+        depth = np.asarray(depth)
+        depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth) + 1.0e-6) * 255.0
+        depth = Image.fromarray(depth.astype(np.uint8)) # 255 -> [0, 1] automatically !!!!
         img_name = (img_path.split(os.sep)[-1]).split('.')[0]
         
         img = self.test_img_trainsform(img).float()
@@ -122,6 +145,39 @@ class TestImageFolder(Dataset):
     def __len__(self):
         return len(self.imgs)
 
+class TestFDPImageFolder(Dataset):
+    def __init__(self, root, in_size, prefix):
+        if os.path.isdir(root):
+            construct_print(f"{root} is an image folder, we will test on it.")
+            self.imgs = _make_fdp_dataset(root)
+        elif os.path.isfile(root):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+        self.test_img_trainsform = transforms.Compose([
+            # 输入的如果是一个tuple，则按照数据缩放，但是如果是一个数字，则按比例缩放到短边等于该值
+            transforms.Resize((in_size, in_size)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.test_depth_trainsform = transforms.Compose([
+            transforms.Resize((in_size, in_size)),
+            transforms.ToTensor()
+        ])
+    def __getitem__(self, index):
+        img_path, depth_path, mask_path = self.imgs[index]
+        
+        img = Image.open(img_path).convert('RGB')
+        depth = Image.open(depth_path).convert('L')
+        img_name = (img_path.split(os.sep)[-1]).split('.')[0]
+        
+        img = self.test_img_trainsform(img).float()
+        depth = self.test_depth_trainsform(depth).float()
+        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
+        return img, depth, mask_path, img_name
+    
+    def __len__(self):
+        return len(self.imgs)
 
 class TestUnlabeledImageFolder(Dataset):
     def __init__(self, root, in_size, prefix):
@@ -156,6 +212,48 @@ class TestUnlabeledImageFolder(Dataset):
     def __len__(self):
         return len(self.imgs)
 
+class TestWithRotationImageFolder(Dataset):
+    def __init__(self, root, in_size, prefix, rotations = (0, 90, 180, 270)):
+        self.rotations = rotations
+        self.times = len(rotations)
+        if os.path.isdir(root):
+            construct_print(f"{root} is an image folder, we will test on it.")
+            self.imgs = _make_dataset(root, split = 'test')
+        elif os.path.isfile(root):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+        self.test_img_trainsform = transforms.Compose([
+            # 输入的如果是一个tuple，则按照数据缩放，但是如果是一个数字，则按比例缩放到短边等于该值
+            transforms.Resize((in_size, in_size)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        self.test_depth_trainsform = transforms.Compose([
+            transforms.Resize((in_size, in_size)),
+            transforms.ToTensor()
+        ])
+    def __getitem__(self, index):
+        rotate_index = np.random.randint(self.times)
+
+        img_path, depth_path, mask_path = self.imgs[index]
+        img_name = (img_path.split(os.sep)[-1]).split('.')[0]
+
+        img = Image.open(img_path).convert('RGB')
+        depth = Image.open(depth_path).convert('L')
+
+        img = img.rotate(self.rotations[rotate_index])
+        depth = depth.rotate(self.rotations[rotate_index])
+        
+        img = self.test_img_trainsform(img).float()
+        depth = self.test_depth_trainsform(depth).float()
+        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
+        rotate_label = torch.tensor(rotate_index).long()
+
+        return img, depth, mask_path, rotate_label, img_name
+    
+    def __len__(self):
+        return len(self.imgs)
 
 def _make_train_dataset_from_list(list_filepath, prefix=('.jpg', '.png')):
     # list_filepath = '/home/lart/Datasets/RGBDSaliency/FinalSet/rgbd_train_jw.lst'

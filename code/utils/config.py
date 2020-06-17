@@ -6,19 +6,24 @@ __all__ = ['proj_root', 'arg_config', 'path_config']
 
 from network.SCFNet import SCFNet_Res50
 from network.S3CFNet import S3CFNet_Res50
+from network.S3CFNetDenseClassification import S3CFNetDenseClassification_Res50
 
 proj_root = os.path.dirname(os.path.dirname(__file__))
-datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
+# datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
+datasets_root = '/home/xqwang/projects/saliency/datasets-fdp/'
 
 unlabeled_path = os.path.join(datasets_root, 'SUN-RGBD', 'train_data')
 
 unlabeled_test_path = os.path.join(datasets_root, 'SUN-RGBD', 'test_data')
-njud_path = os.path.join(datasets_root, 'NJUD', 'test_data')
-nlpr_path = os.path.join(datasets_root, 'NLPR', 'test_data')
+# njud_path = os.path.join(datasets_root, 'NJUD', 'test_data')
+# nlpr_path = os.path.join(datasets_root, 'NLPR', 'test_data')
+njud_path = os.path.join(datasets_root, 'NJUD')
+nlpr_path = os.path.join(datasets_root, 'NLPR')
 sip_path = os.path.join(datasets_root, 'SIP')
 rgbd135_path = os.path.join(datasets_root, 'RGBD135')
-stereo_path = os.path.join(datasets_root, 'STEREO')
+stereo_path = os.path.join(datasets_root, 'STERE')
 lfsd_path = os.path.join(datasets_root, 'LFSD')
+dut_path = os.path.join(datasets_root, 'DUT-RGBD', 'test_data')
 
 # train_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'train_data')
 # test_path = os.path.join(datasets_root, 'NJUD-NLPR-RGBD135', 'test_data')
@@ -29,7 +34,7 @@ test_path = os.path.join(datasets_root, 'NJUD-NLPR', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'S3CFNet_Res50',  # 决定使用哪一个网络
+    'NET': 'SCFNet_Res50',  # 决定使用哪一个网络
     'SCFNet_Res50': {
         'net': SCFNet_Res50,
         'exp_name': 'SCFNet_Res50'
@@ -38,9 +43,12 @@ arg_config = {
         'net': S3CFNet_Res50,
         'exp_name': 'S3CFNet_Res50'
     },    
-    
+    'S3CFNetDenseClassification_Res50': {
+        'net': S3CFNetDenseClassification_Res50,
+        'exp_name': 'S3CFNetDenseClassification_Res50'
+    }, 
+
     'only_test': True,
-    'test_unlabeled': False,
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
@@ -55,12 +63,13 @@ arg_config = {
         'te_data_path': test_path,
         'te_data_list': {
             # 'unlabeled': unlabeled_test_path
-            'njud': njud_path,
-            'nlpr': nlpr_path
-            # 'sip': sip_path,
-            # 'rgbd135': rgbd135_path,
-            # 'stereo': stereo_path,
-            # 'lfsd': lfsd_path
+            # 'NJUD': njud_path,
+            # 'NLPR': nlpr_path,
+            # 'SIP': sip_path,
+            # 'RGBD135': rgbd135_path,
+            # 'STERE': stereo_path,
+            # 'LFSD': lfsd_path
+            'DUT-RGBD': dut_path
         },
     },
     'tb_update': 10,  # >0 则使用tensorboard
@@ -80,7 +89,11 @@ arg_config = {
     'batch_size': 4,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
-    'gpus': [0],
+    'gpus': [0, 1],
+
+    'inference_study': None, # output f1-f5 feature map, set in main_inference_study
+    'test_unlabeled': False,
+    'test_rotation': False, # only for S3CFNet
 
     'is_mt': None, # set in main.py or main_mt.py
     'labeled_batch_size': 2,
@@ -92,6 +105,7 @@ arg_config = {
     'rot_loss_weight': 0.1,
     'is_labeled_rotation': False # enable when is_ss == True
 }
+assert not arg_config['test_rotation'] or arg_config['test_rotation'] and arg_config['NET'] == 'S3CFNet_Res50', 'config conflict'
 ################################################################################
 
 # summary_key = 'exp-full-channel-so-0' #in output-backup directory: 2 times middle channel njud-nlpr 180 eras / batch 4
@@ -99,16 +113,18 @@ arg_config = {
 # summary_key = 'exp-reduce-channel-mt-1' #: 1 time middle channel njud-nlpr 350 eras / 150 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-2' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency
 # summary_key = 'exp-reduce-channel-mt-3' #: 1 time middle channel njud-nlpr 350 eras / 300 rampup / fusion based consistency(batch size 8)
-# summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
+summary_key = 'exp-reduce-channel-so-0' #: 1 time middle channel njud-nlpr 180 eras / batch 4
 # summary_key = 'exp-reduce-channel-so-1' #: 1 time middle channel njud-nlpr 500 eras / batch 8
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
 
 # summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss
 
-summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
+# summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
 # summary_key = 'exp-reduce-channel-ss-3' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.01)
 # summary_key = 'exp-reduce-channel-ss-4' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 10)
+
+# summary_key = 'exp-reduce-channel-ssdc-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 
 # summary_key = 'exp-reduce-channel-ssmt-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consistency + labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ssmt-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / segmentation consisitency + only unlabeled rotation loss

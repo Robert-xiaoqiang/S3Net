@@ -3,7 +3,8 @@ from torch.utils.data import DataLoader
 
 from ..config import arg_config
 from ..misc import construct_print
-from .create_rgb_datasets_imgs import TestImageFolder, TestUnlabeledImageFolder, TrainImageFolder, TrainMTImageFolder, TrainSSImageFolder
+from .create_rgb_datasets_imgs import TestImageFolder, TestFDPImageFolder, TestUnlabeledImageFolder, TestWithRotationImageFolder, \
+TrainImageFolder, TrainMTImageFolder, TrainSSImageFolder
 from .sampler import TwoStreamBatchSampler
 
 class DataLoaderX(DataLoader):
@@ -74,16 +75,26 @@ def create_loader(data_path, mode, get_length=False, prefix=('.jpg', '.png')):
         length_of_dataset = len(train_set)
     elif mode == 'test':
         if data_path is not None:
-            if not arg_config['test_unlabeled']:
-                construct_print(f"Testing on: {data_path}")
-                test_set = TestImageFolder(data_path,
-                                           in_size=arg_config["input_size"],
-                                           prefix=prefix)
-            else:
+            if arg_config['test_unlabeled']:
                 construct_print(f"Testing on unlabeled: {data_path}")
                 test_set = TestUnlabeledImageFolder(data_path,
                                            in_size=arg_config["input_size"],
-                                           prefix=prefix)                
+                                           prefix=prefix)
+            else:
+                if arg_config['test_rotation']:
+                    construct_print(f"Testing with rotation: {data_path}")
+                    test_set = TestWithRotationImageFolder(data_path,
+                                               in_size=arg_config["input_size"],
+                                               prefix=prefix,
+                                               rotations = (0, 90, 180, 270))                    
+                else:
+                    construct_print(f"Testing on: {data_path}")
+                    test_set = TestImageFolder(data_path,
+                                               in_size=arg_config["input_size"],
+                                               prefix=prefix)               
+                    # test_set = TestFDPImageFolder(data_path,
+                    #                            in_size=arg_config["input_size"],
+                    #                            prefix=prefix) 
             loader = _make_loader(test_set, shuffle=False, drop_last=False)
             length_of_dataset = len(test_set)
         else:
