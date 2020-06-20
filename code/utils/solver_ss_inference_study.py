@@ -5,7 +5,7 @@ from pprint import pprint
 import numpy as np
 import torch
 import cv2
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 from tensorboardX import SummaryWriter
 from torch.nn import BCELoss, CrossEntropyLoss
 from torch.optim import Adam, SGD, lr_scheduler
@@ -49,9 +49,12 @@ class Solver():
         self.tr_loader = create_loader(
             data_path=self.tr_data_path, mode='train', get_length=False
         )
-        self.te_loader, self.te_length = create_loader(
-            data_path=self.te_data_path, mode='test', get_length=True
-        )
+
+        # validate use, here we can omit it
+        # self.te_loader, self.te_length = create_loader(
+        #     data_path=self.te_data_path, mode='test', get_length=True
+        # )
+        self.te_loader = self.te_length = None
         
         self.net = self.args[self.args["NET"]]["net"](self.args['inference_study'])
         self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
@@ -280,6 +283,7 @@ class Solver():
                    "MAE": maes.avg}
         return results
 
+    # register grad firstly in S3CFNet.py
     def test_with_roration_inference_study(self):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
@@ -293,7 +297,7 @@ class Solver():
         for test_batch_id, test_data in tqdm_iter:
             tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
             # with torch.no_grad():
-            in_imgs, in_depths, in_mask_paths, in_rot_labels, in_names = test_data
+            in_imgs, in_depths, in_mask_paths, in_rot_labels, in_names, in_paths = test_data
             in_imgs = in_imgs.to(self.dev, non_blocking=True)
             in_depths = in_depths.to(self.dev, non_blocking=True)
             in_rot_labels = in_rot_labels.to(self.dev, non_blocking=True)
@@ -304,35 +308,62 @@ class Solver():
             tp = torch.where(rot_pre == rot_gt)[0].shape[0]
             rotations.update(float(tp) / self.args['batch_size'])
 
-            for item_id, feature in enumerate(outputs[2]):
-                target_score = outputs[1][item_id, rot_pre[item_id]]
+            for item_id, (mask, rotation, feature, f1) in enumerate(zip(*outputs)):
+                feature = (feature - torch.min(feature)) / (torch.max(feature) - torch.min(feature))
+
+                target_score = rotation[rot_pre[item_id]]
                 target_score.backward(retain_graph = True)
                 grad = self.net.module.get_grad()
                 pooled_grad = torch.nn.functional.adaptive_avg_pool2d(grad, (1, 1))
                 weighted_feature = feature * pooled_grad[item_id]
 
-                mean_feature = torch.mean(weighted_feature, dim = 0).cpu().detach()
-                mean_feature = torch.max(mean_feature, torch.FloatTensor([ 0.0 ]))
-                mean_feature /= torch.max(mean_feature)
+                mean_feature = torch.mean(weighted_feature, dim = 0).cpu().detach()               
+                mean_feature = (mean_feature - torch.min(mean_feature)) / (torch.max(mean_feature) - torch.min(mean_feature))
 
-                feature_img = self.to_pil(mean_feature)
+                feature_img = self.to_pil(mean_feature).resize((128, 128))
 
                 fimg_dir = os.path.join(self.save_path, in_names[item_id])
                 os.makedirs(fimg_dir, exist_ok = True)
 
-                original_img = self.to_pil(in_imgs[item_id].cpu().detach()).resize(feature_img.size)
-                
+                original_img = Image.open(in_paths[item_id]).rotate(90.0 * in_rot_labels[item_id].item()).resize((128, 128))
+                mask_img = self.to_pil(mask.cpu().data).resize((128, 128))
+
+                # cv2.Mat np.array
                 feature_img = cv2.applyColorMap(np.asarray(feature_img), cv2.COLORMAP_JET)
+
                 superimposed_fimg = feature_img * 0.4 + np.asarray(original_img)
 
                 fimg_path = os.path.join(fimg_dir, 'heatmap.png')
-                Image.fromarray(feature_img).save(fimg_path)
+                ImageOps.invert(Image.fromarray(feature_img)).save(fimg_path)
+
+                original_img_path = os.path.join(fimg_dir, 'original.png')
+                original_img.save(original_img_path)
+
+                mask_img_path = os.path.join(fimg_dir, 'mask.png')
+                mask_img.save(mask_img_path)
 
                 fimg_path = os.path.join(fimg_dir, 'superimposed.png')
                 cv2.imwrite(fimg_path, superimposed_fimg)
 
+                # mean_original_feature = torch.mean(feature, dim = 0) 
+                # activated_mean_original_feature = torch.sigmoid(mean_original_feature).cpu().data
+                # original_feature_img = self.to_pil(activated_mean_original_feature)
+                # original_feature_img = np.asarray(original_feature_img)
+                # original_feature_img = (original_feature_img - np.min(original_feature_img)) / (np.max(original_feature_img) - np.min(original_feature_img) + 1.0e-6) * 255.0
+                # original_feature_img = Image.fromarray(original_feature_img.astype(np.uint8)).resize((128, 128))
+
+                # original_fimg_path = os.path.join(fimg_dir, 'f5.png')
+                # original_feature_img.save(original_fimg_path)
+                f1 = (f1 - torch.min(f1)) / (torch.max(f1) - torch.min(f1))
+
+                f1_img = self.to_pil(f1.cpu().data)
+                f1_img = ImageEnhance.Contrast(f1_img).enhance(10.5)
+                f1_path = os.path.join(fimg_dir, 'f1.png')
+                f1_img.save(f1_path)
+
         print('test rotation accuracy: {:.4f}'.format(rotations.avg))
 
+    # save f5 only
     def test_inference_study(self):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
@@ -356,7 +387,7 @@ class Solver():
                     feature = torch.max(f[item_id], torch.FloatTensor([ 0.0 ]))
                     feature /= torch.max(feature)
 
-                    fimg = self.to_pil(feature)
+                    fimg = self.to_pil(feature).resize((32, 32))
 
                     fimg_dir = os.path.join(self.save_path, in_names[item_id])
                     os.makedirs(fimg_dir, exist_ok = True)
@@ -500,6 +531,16 @@ class Solver():
                                 f"(only has the net's weight params)")
             else:
                 raise NotImplementedError
+            # # so-0 parameters overwrite
+            # decoder_path = '/home/xqwang/projects/saliency/SCFNet/output/exp-reduce-channel-so-0/SCFNet_Res50/pth/best/state_final.pth'
+            # state_dict = torch.load(decoder_path)
+            # from collections import OrderedDict
+            # new_state_dict = OrderedDict()
+            # for k, v in state_dict.items():
+            #     newk = 'module.' + k
+            #     new_state_dict[newk] = v
+            # self.net.load_state_dict(new_state_dict, strict = False)
+            # construct_print('parameters of backbone have been overwritten by so-0')
         else:
             self.start_epoch = 0
             construct_print(f'Cannot found pth in {load_path:}, then train from(test based on) scratch')

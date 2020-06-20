@@ -5,7 +5,7 @@ from pprint import pprint
 import numpy as np
 import torch
 import cv2
-from PIL import Image
+from PIL import Image, ImageEnhance
 from tensorboardX import SummaryWriter
 from torch.nn import BCELoss
 from torch.optim import Adam, SGD, lr_scheduler
@@ -49,9 +49,12 @@ class Solver():
         self.tr_loader = create_loader(
             data_path=self.tr_data_path, mode='train', get_length=False
         )
-        self.te_loader, self.te_length = create_loader(
-            data_path=self.te_data_path, mode='test', get_length=True
-        )
+
+        # validate use, here we can omit it
+        # self.te_loader, self.te_length = create_loader(
+        #     data_path=self.te_data_path, mode='test', get_length=True
+        # )
+        self.te_loader = self.te_length = None
         
         self.net = self.args[self.args["NET"]]["net"](self.args['inference_study'])
         # self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
@@ -300,25 +303,30 @@ class Solver():
         for test_batch_id, test_data in tqdm_iter:
             tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
             with torch.no_grad():
-                in_imgs, in_depths, in_mask_paths, in_names = test_data
+                in_imgs, in_depths, in_mask_paths, in_names, in_paths = test_data
                 in_imgs = in_imgs.to(self.dev, non_blocking=True)
                 in_depths = in_depths.to(self.dev, non_blocking=True)
                 outputs = self.net(in_imgs, in_depths)
-            # [B*H*W] * 5
-            for fi, f in enumerate(outputs[1:], 1):
-                # B*H*W
-                f = f.cpu().detach()
-                for item_id, out_item in enumerate(f):
-                    feature = torch.max(f[item_id], torch.FloatTensor([ 0.0 ]))
-                    feature /= torch.max(feature)
+            for item_id, f1 in enumerate(outputs[1]):
+                fimg_dir = os.path.join(self.save_path, in_names[item_id])
+                os.makedirs(fimg_dir, exist_ok = True)
 
-                    fimg = self.to_pil(feature)
+                original_img = Image.open(in_paths[item_id]).resize((128, 128))
+                mask = Image.open(in_mask_paths[item_id]).resize((128, 128))
 
-                    fimg_dir = os.path.join(self.save_path, in_names[item_id])
-                    os.makedirs(fimg_dir, exist_ok = True)
+                f1 = torch.max(f1, torch.FloatTensor([ 0.0 ]).cuda())
+                f1 = f1 / torch.max(f1) # * torch.tensor(255.0).cuda()
+                f1_img = self.to_pil(f1.cpu().data)
+                f1_img = ImageEnhance.Contrast(f1_img).enhance(10.5).resize((128, 128))
 
-                    fimg_path = os.path.join(fimg_dir, str(fi) + '.png')
-                    fimg.save(fimg_path)
+                f1_path = os.path.join(fimg_dir, 'f1.png')
+                f1_img.save(f1_path)
+                
+                original_img_path = os.path.join(fimg_dir, 'original.png')
+                original_img.save(original_img_path)
+
+                mask_path = os.path.join(fimg_dir, 'mask.png')
+                mask.save(mask_path)                          
 
     def make_scheduler(self):
         total_num = self.iter_num if self.args['sche_usebatch'] else self.end_epoch
@@ -437,6 +445,7 @@ class Solver():
                 - 'all': 回复完整模型，包括训练中的的参数；
                 - 'onlynet': 仅恢复模型权重参数
         """
+
         if os.path.exists(load_path) and os.path.isfile(load_path):
             construct_print(f"Loading checkpoint '{load_path}'")
             checkpoint = torch.load(load_path)

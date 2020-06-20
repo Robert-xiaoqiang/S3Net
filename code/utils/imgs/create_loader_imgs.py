@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 
 from ..config import arg_config
 from ..misc import construct_print
-from .create_rgb_datasets_imgs import TestImageFolder, TestFDPImageFolder, TestUnlabeledImageFolder, TestWithRotationImageFolder, \
+from .create_rgb_datasets_imgs import TestImageFolder, TestFDPImageFolder, TestUnlabeledImageFolder, TestWithRotationImageFolder, TestWithRotationFDPImageFolder, \
 TrainImageFolder, TrainMTImageFolder, TrainSSImageFolder
 from .sampler import TwoStreamBatchSampler
 
@@ -82,19 +82,29 @@ def create_loader(data_path, mode, get_length=False, prefix=('.jpg', '.png')):
                                            prefix=prefix)
             else:
                 if arg_config['test_rotation']:
-                    construct_print(f"Testing with rotation: {data_path}")
-                    test_set = TestWithRotationImageFolder(data_path,
-                                               in_size=arg_config["input_size"],
-                                               prefix=prefix,
-                                               rotations = (0, 90, 180, 270))                    
+                    if arg_config['test_style'] == 'dmra':
+                        construct_print(f"Testing with rotation and dmra style: {data_path}")
+                        test_set = TestWithRotationImageFolder(data_path,
+                                                in_size=arg_config["input_size"],
+                                                prefix=prefix,
+                                                rotations = (0, 90, 180, 270))
+                    elif arg_config['test_style'] == 'fdp':
+                        construct_print(f"Testing with rotation and fdp style: {data_path}")
+                        test_set = TestWithRotationFDPImageFolder(data_path,
+                                                in_size=arg_config["input_size"],
+                                                prefix=prefix,
+                                                rotations = (0, 90, 180, 270))
                 else:
-                    construct_print(f"Testing on: {data_path}")
-                    test_set = TestImageFolder(data_path,
-                                               in_size=arg_config["input_size"],
-                                               prefix=prefix)               
-                    # test_set = TestFDPImageFolder(data_path,
-                    #                            in_size=arg_config["input_size"],
-                    #                            prefix=prefix) 
+                    if arg_config['test_style'] == 'dmra':
+                        construct_print(f"Testing with dmra style on: {data_path}")
+                        test_set = TestImageFolder(data_path,
+                                                   in_size=arg_config["input_size"],
+                                                   prefix=prefix)
+                    elif arg_config['test_style'] == 'fdp':
+                        construct_print(f"Testing with fdp style on: {data_path}")
+                        test_set = TestFDPImageFolder(data_path,
+                                                in_size=arg_config["input_size"],
+                                                prefix=prefix)
             loader = _make_loader(test_set, shuffle=False, drop_last=False)
             length_of_dataset = len(test_set)
         else:
