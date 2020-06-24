@@ -354,8 +354,8 @@ class Solver():
 
                 # original_fimg_path = os.path.join(fimg_dir, 'f5.png')
                 # original_feature_img.save(original_fimg_path)
-                f1 = (f1 - torch.min(f1)) / (torch.max(f1) - torch.min(f1))
 
+                f1 = (f1 - torch.min(f1)) / (torch.max(f1) - torch.min(f1))
                 f1_img = self.to_pil(f1.cpu().data)
                 f1_img = ImageEnhance.Contrast(f1_img).enhance(10.5)
                 f1_path = os.path.join(fimg_dir, 'f1.png')
@@ -363,7 +363,7 @@ class Solver():
 
         print('test rotation accuracy: {:.4f}'.format(rotations.avg))
 
-    # save f5 only
+    # save f1-f5 only
     def test_inference_study(self):
         if self.only_test:
             self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
