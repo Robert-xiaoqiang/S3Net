@@ -99,7 +99,7 @@ arg_config = {
     'lr_type': 'poly',
     'lr_decay': 0.9,  # poly
     'use_bigt': True,  # 有时似乎打开好，有时似乎关闭好？
-    'batch_size': 64,  # 要是继续训练, 最好使用相同的batchsize
+    'batch_size': 32,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
     'gpus': [0, 1, 2, 3],
