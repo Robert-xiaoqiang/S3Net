@@ -66,7 +66,6 @@ def _make_dataset(root, split):
              )
             for img_name in img_list]
 
-
 def _make_fdp_dataset(root):
     img_path = os.path.join(root, 'RGB')
     depth_path = os.path.join(root, 'depth')
@@ -164,21 +163,21 @@ class TestFDPImageFolder(Dataset):
             transforms.Resize((in_size, in_size)),
             transforms.ToTensor()
         ])
+
     def __getitem__(self, index):
         img_path, depth_path, mask_path = self.imgs[index]
         
         img = Image.open(img_path).convert('RGB')
         depth = Image.open(depth_path).convert('L')
         depth = np.asarray(depth)
-        depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth) + 1.0e-6) * 255.0
+        # depth = (depth - np.min(depth)) / (np.max(depth) - np.min(depth) + 1.0e-6) * 255.0
         depth = Image.fromarray(depth.astype(np.uint8)) # 255 -> [0, 1] automatically !!!!        
         img_name = (img_path.split(os.sep)[-1]).split('.')[0]
         
         img = self.test_img_trainsform(img).float()
         depth = self.test_depth_trainsform(depth).float()
-        # depth = (depth - torch.min(depth)) / (torch.max(depth) - torch.min(depth) + torch.tensor(1.0e-6)) * torch.tensor(255.0)
-        return img, depth, mask_path, img_name, img_path
-    
+        return img, depth, mask_path, img_name
+
     def __len__(self):
         return len(self.imgs)
 

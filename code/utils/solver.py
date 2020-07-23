@@ -56,7 +56,7 @@ class Solver():
         self.te_loader = self.te_length = None
         
         self.net = self.args[self.args["NET"]]["net"]()
-        # self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
+        self.net = torch.nn.DataParallel(self.net, device_ids = self.args['gpus'])
         self.net.to(self.dev)        
         self.opti = self.make_optim()
         
@@ -463,4 +463,7 @@ class Solver():
                 raise NotImplementedError
         else:
             self.start_epoch = 0
-            construct_print(f'Cannot found pth in {load_path:}, then train from(test based on) scratch')
+            construct_print(f'Cannot find pth in {load_path:}, then train from(test based on) scratch')
+
+    def multigpu_heuristic(self):
+        pass

@@ -79,7 +79,7 @@ class S3CFNet_Res50(nn.Module):
 
         def extract(g):
             self.grad = g
-        in_data_32.register_hook(extract)
+        # in_data_32.register_hook(extract)
 
         if not self.inference_study:
             return out_data.sigmoid(), self.rotation_classifier(in_data_32)

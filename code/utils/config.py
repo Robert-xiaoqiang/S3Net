@@ -5,19 +5,18 @@ from datetime import datetime
 __all__ = ['proj_root', 'arg_config', 'path_config']
 
 from network.SCFNet import SCFNet_Res50
+from network.SCFNetDecay import SCFNetDecay_Res50
 from network.S3CFNet import S3CFNet_Res50
 from network.S3CFNetDenseClassification import S3CFNetDenseClassification_Res50
 
 proj_root = os.path.dirname(os.path.dirname(__file__))
-train_datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
+train_datasets_root = '/home/xqwang/projects/saliency/datasets/'
 # test_datasets_root = '/home/xqwang/projects/saliency/semi-sod/datasets/'
 test_datasets_root = '/home/xqwang/projects/saliency/datasets-fdp/'
 
 unlabeled_path = os.path.join(train_datasets_root, 'SUN-RGBD', 'train_data')
-
 unlabeled_test_path = os.path.join(train_datasets_root, 'SUN-RGBD', 'test_data')
-# njud_path = os.path.join(test_datasets_root, 'NJUD', 'test_data')
-# nlpr_path = os.path.join(test_datasets_root, 'NLPR', 'test_data')
+
 njud_path = os.path.join(test_datasets_root, 'NJUD')
 nlpr_path = os.path.join(test_datasets_root, 'NLPR')
 sip_path = os.path.join(test_datasets_root, 'SIP')
@@ -38,11 +37,15 @@ test_path = os.path.join(train_datasets_root, 'NJUD-NLPR', 'test_data')
 # 配置区域 #####################################################################
 arg_config = {
     # 常用配置
-    'NET': 'S3CFNet_Res50',  # 决定使用哪一个网络
+    'NET': 'SCFNetDecay_Res50',  # 决定使用哪一个网络
     'SCFNet_Res50': {
         'net': SCFNet_Res50,
         'exp_name': 'SCFNet_Res50'
     },
+    'SCFNetDecay_Res50': {
+        'net': SCFNetDecay_Res50,
+        'exp_name': 'SCFNetDecay_Res50'
+    }, 
     'S3CFNet_Res50': {
         'net': S3CFNet_Res50,
         'exp_name': 'S3CFNet_Res50'
@@ -52,12 +55,12 @@ arg_config = {
         'exp_name': 'S3CFNetDenseClassification_Res50'
     }, 
 
-    'only_test': True,
+    'only_test': False,
     'test_style': 'fdp', # fdp, dmra
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 50,  # 训练周期, 0: directly test model
+    'epoch_num': 900,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
@@ -65,7 +68,6 @@ arg_config = {
         'unlabeled_path': unlabeled_path,
         'tr_data_path': train_path,
         'val_data_path': val_path,
-        'te_data_path': test_path,
         'te_data_list': {
             # 'unlabeled': unlabeled_test_path
             # 'njud': njud_path,
@@ -74,13 +76,13 @@ arg_config = {
             # 'rgbd135': rgbd135_path,
             # 'stereo': stereo_path,
             # 'lfsd': lfsd_path
-            'NJUD': njud_path,
-            'NLPR': nlpr_path,
-            'SIP': sip_path,
-            'RGBD135': rgbd135_path,
-            'STERE': stereo_path,
-            'LFSD': lfsd_path
-            # 'DUT-RGBD': dut_path
+            # 'NJUD': njud_path,
+            # 'NLPR': nlpr_path,
+            # 'SIP': sip_path,
+            # 'RGBD135': rgbd135_path,
+            # 'STERE': stereo_path,
+            # 'LFSD': lfsd_path
+            'DUT-RGBD': dut_path
         },
     },
     'tb_update': 10,  # >0 则使用tensorboard
@@ -97,15 +99,15 @@ arg_config = {
     'lr_type': 'poly',
     'lr_decay': 0.9,  # poly
     'use_bigt': True,  # 有时似乎打开好，有时似乎关闭好？
-    'batch_size': 4,  # 要是继续训练, 最好使用相同的batchsize
+    'batch_size': 64,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
-    'gpus': [0],
+    'gpus': [0, 1, 2, 3],
 
     'inference_study': None, # output f1-f5 feature map, set in main_inference_study
     'test_unlabeled': False,
-    'test_without_metrics': True,
-    'test_rotation': True, # only for S3CFNet
+    'test_without_metrics': False,
+    'test_rotation': False, # only for S3CFNet
 
     'is_mt': None, # set in main.py or main_mt.py
     'labeled_batch_size': 2,
@@ -130,8 +132,9 @@ assert not arg_config['test_rotation'] or arg_config['test_rotation'] and arg_co
 # summary_key = 'exp-reduce-channel-so-2' #: 1 time middle channel njud-nlpr 200 eras / batch 8 / without 1-dice objective function
 # summary_key = 'exp-reduce-channel-so-fake'
 # summary_key = 'exp-reduce-channel-so-wise' #: 10 epoch wise
+summary_key = 'exp-reduce-channel-so-decay' #: 10 epoch wise
 
-summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
+# summary_key = 'exp-reduce-channel-ss-0' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / labeled/unlabeled rotation loss
 # summary_key = 'exp-reduce-channel-ss-1' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss
 
 # summary_key = 'exp-reduce-channel-ss-2' #: 1 time middle channel njud-nlpr 350 eras / batch 4 / only unlabeled rotation loss(rot weight 0.1)
