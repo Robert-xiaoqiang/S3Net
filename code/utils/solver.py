@@ -29,7 +29,7 @@ class Solver():
         
         self.tr_data_path = self.args['rgb_data']['tr_data_path']
         self.val_data_path = self.args['rgb_data']['val_data_path']
-        self.te_data_path = self.args['rgb_data']['te_data_path']
+        self.te_data_path = None # useless in training or validating
         self.te_data_list = self.args['rgb_data']['te_data_list']
         self.best_results = {
             'MAE': 100.0,
