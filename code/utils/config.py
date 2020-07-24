@@ -55,12 +55,12 @@ arg_config = {
         'exp_name': 'S3CFNetDenseClassification_Res50'
     }, 
 
-    'only_test': False,
+    'only_test': True,
     'test_style': 'fdp', # fdp, dmra
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
     'save_pre': True,  # 是否保留最终的预测结果
-    'epoch_num': 900,  # 训练周期, 0: directly test model
+    'epoch_num': 50,  # 训练周期, 0: directly test model
     'lr': 0.001,  # 微调时缩小100倍
     'xlsx_name': 'result.xlsx',
     
@@ -76,13 +76,13 @@ arg_config = {
             # 'rgbd135': rgbd135_path,
             # 'stereo': stereo_path,
             # 'lfsd': lfsd_path
-            # 'NJUD': njud_path,
-            # 'NLPR': nlpr_path,
-            # 'SIP': sip_path,
-            # 'RGBD135': rgbd135_path,
-            # 'STERE': stereo_path,
-            # 'LFSD': lfsd_path
-            'DUT-RGBD': dut_path
+            'NJUD': njud_path,
+            'NLPR': nlpr_path,
+            'SIP': sip_path,
+            'RGBD135': rgbd135_path,
+            'STERE': stereo_path,
+            'LFSD': lfsd_path
+            # 'DUT-RGBD': dut_path
         },
     },
     'tb_update': 10,  # >0 则使用tensorboard
@@ -158,7 +158,7 @@ save_path = os.path.join(pth_log_path, 'pre')
 pth_path = os.path.join(pth_log_path, 'pth')
 
 if arg_config['only_test']:
-    pth_path = os.path.join(pth_path, 'best')
+    pth_path = os.path.join(pth_path, '3')
 
 final_full_model_path = os.path.join(pth_path, "checkpoint_final.pth.tar")
 final_state_path = os.path.join(pth_path, "state_final.pth")
