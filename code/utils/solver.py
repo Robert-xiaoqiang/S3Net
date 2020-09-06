@@ -157,14 +157,17 @@ class Solver():
                     full_net_path=self.path['final_full_net'],
                     state_net_path=self.path['final_state_net']
                 )  # 保存参数
-                # for ablation study
-                # if not curr_epoch % 2:
+
+                #### for ablation study ####
                 self.save_checkpoint(
                     curr_epoch + 1,
                     full_net_path=self.path['final_full_net'],
                     state_net_path=self.path['final_state_net'],
                     save_key = str(curr_epoch + 1)
-                )         
+                )
+                ####                    ####
+
+
                 self.validate(curr_epoch)
         
         total_results = {}
