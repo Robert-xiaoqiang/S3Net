@@ -107,6 +107,10 @@ class Solver():
                     train_masks = train_masks.to(self.dev, non_blocking=True)
                     train_preds = self.net(train_inputs, train_depths)
                     
+                    # process MTL output
+                    if isinstance(train_preds, (list, tuple)):
+                        train_preds = train_preds[0]
+
                     train_loss, loss_item_list = self.total_loss(train_preds, train_masks)
                     train_loss.backward()
                     self.opti.step()
@@ -157,14 +161,17 @@ class Solver():
                     full_net_path=self.path['final_full_net'],
                     state_net_path=self.path['final_state_net']
                 )  # 保存参数
+                
+                ###################################################
                 # for ablation study
-                # if not curr_epoch % 2:
-                self.save_checkpoint(
-                    curr_epoch + 1,
-                    full_net_path=self.path['final_full_net'],
-                    state_net_path=self.path['final_state_net'],
-                    save_key = str(curr_epoch + 1)
-                )         
+                # self.save_checkpoint(
+                #     curr_epoch + 1,
+                #     full_net_path=self.path['final_full_net'],
+                #     state_net_path=self.path['final_state_net'],
+                #     save_key = str(curr_epoch + 1)
+                # )
+                ###################################################
+                
                 self.validate(curr_epoch)
         
         total_results = {}
@@ -237,6 +244,11 @@ class Solver():
                 in_depths = in_depths.to(self.dev, non_blocking=True)
                 outputs = self.net(in_imgs, in_depths)
             
+            # process MTL output
+            if isinstance(outputs, (list, tuple)):
+                outputs = outputs[0]
+
+
             outputs_np = outputs.cpu().detach()
             
             for item_id, out_item in enumerate(outputs_np):

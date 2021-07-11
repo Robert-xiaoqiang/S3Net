@@ -323,7 +323,7 @@ class TrainImageFolder(Dataset):
         self.use_bigt = use_bigt
         if os.path.isdir(root):
             construct_print(f"{root} is an image folder, we will train on it.")
-            self.imgs = _make_dataset(root, split = 'train')
+            self.imgs = _make_fdp_dataset(root)
         elif os.path.isfile(root):
             construct_print(f"{root} is a list of images, we will use these paths to read the "
                             f"corresponding image")
@@ -475,7 +475,7 @@ class TrainSSImageFolder(Dataset):
 
         if os.path.isdir(root):
             construct_print(f"{root} is an image folder, we will train on it.")
-            self.imgs = _make_dataset(root, split = 'train')
+            self.imgs = _make_fdp_dataset(root)
         elif os.path.isfile(root):
             construct_print(f"{root} is a list of images, we will use these paths to read the "
                             f"corresponding image")
@@ -573,8 +573,3 @@ class TrainSSImageFolder(Dataset):
     def get_primary_secondary_indices(self):
         return np.arange(len(self.imgs)), np.arange(len(self.imgs), len(self.unlabeled_imgs))
         # return np.arange(len(self.imgs) * self.times), np.arange(len(self.imgs) * self.times, len(self.unlabeled_imgs) * self.times)
-
-
-if __name__ == '__main__':
-    img_list = _make_train_dataset_from_list()
-    construct_print(len(img_list))
