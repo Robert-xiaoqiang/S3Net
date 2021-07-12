@@ -56,7 +56,7 @@ arg_config = {
         'exp_name': 'S3CFNetDenseClassification_Res50'
     }, 
 
-    'only_test': False,
+    'only_test': True,
     'test_style': 'fdp', # fdp, dmra
     'resume': True,  # resume when training/testing
     'use_aux_loss': True,  # 是否使用辅助损失
@@ -161,7 +161,7 @@ save_path = os.path.join(pth_log_path, 'pre')
 pth_path = os.path.join(pth_log_path, 'pth')
 
 if arg_config['only_test']:
-    pth_path = os.path.join(pth_path, '3')
+    pth_path = os.path.join(pth_path, '80')
 
 final_full_model_path = os.path.join(pth_path, "checkpoint_final.pth.tar")
 final_state_path = os.path.join(pth_path, "state_final.pth")
