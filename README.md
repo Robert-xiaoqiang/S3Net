@@ -2,7 +2,7 @@
 
 - This repository is the official implementation of [the paper](http://dpfan.net/d3netbenchmark/).
 
-![pipeline](https://github.com/Robert-xiaoqiang/S3Net/blob/master/demo/pipeline.png pipeline)
+![pipeline](demo/pipeline.png pipeline)
 
 ## Our results
 
