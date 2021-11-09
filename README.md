@@ -2,7 +2,9 @@
 
 - This repository is the official implementation of [the paper](http://dpfan.net/d3netbenchmark/).
 
-![pipeline](demo/pipeline.png pipeline)
+
+![](demo/pipeline.png)
+
 
 ## Our results
 
