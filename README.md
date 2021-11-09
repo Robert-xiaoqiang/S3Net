@@ -2,11 +2,11 @@
 
 - This repository is the official implementation of [the paper](http://dpfan.net/d3netbenchmark/).
 
-![pipeline]('demo/pipeline.png' pipeline)
+![pipeline](https://github.com/Robert-xiaoqiang/S3Net/blob/master/demo/pipeline.png pipeline)
 
 ## Our results
 
-- download from the BaiduPan[link]() or Google Drive [link]()
+- download from the BaiduPan [link]() or Google Drive [link]().
 
 ## Prerequisites
 ```bash
@@ -15,6 +15,14 @@ pip install -r requirements.txt
 
 ## Datasets
 
-- download from this [link]()
+- download from this [link]().
 
 ## Train
+
+## Test
+
+## Acknowledge
+
+## License
+
+## Citation
