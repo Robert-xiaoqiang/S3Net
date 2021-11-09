@@ -78,8 +78,8 @@ arg_config = {
             # 'rgbd135': rgbd135_path,
             # 'stereo': stereo_path,
             # 'lfsd': lfsd_path
-            'NJUD': njud_path,
-            'NLPR': nlpr_path,
+            # 'NJUD': njud_path,
+            # 'NLPR': nlpr_path,
             'SIP': sip_path,
             'RGBD135': rgbd135_path,
             'STERE': stereo_path,
@@ -104,12 +104,14 @@ arg_config = {
     'batch_size': 32,  # 要是继续训练, 最好使用相同的batchsize
     'num_workers': 8,  # 不要太大, 不然运行多个程序同时训练的时候, 会造成数据读入速度受影响
     'input_size': 256,
-    'gpus': [0, 1, 2, 3],
+    'gpus': [0],
 
     'inference_study': None, # output f1-f5 feature map, set in main_inference_study
     'test_unlabeled': False,
-    'test_without_metrics': True,
+    'test_without_metrics': False,
     'test_rotation': False, # only for S3CFNet
+    'test_inference_time': True,
+    'test_individual_metrics': False, # only for failure case analysis
 
     'is_mt': None, # set in main.py or main_mt.py
     'labeled_batch_size': 2,
@@ -161,7 +163,7 @@ save_path = os.path.join(pth_log_path, 'pre')
 pth_path = os.path.join(pth_log_path, 'pth')
 
 if arg_config['only_test']:
-    pth_path = os.path.join(pth_path, '80')
+    pth_path = os.path.join(pth_path, 'best')
 
 final_full_model_path = os.path.join(pth_path, "checkpoint_final.pth.tar")
 final_state_path = os.path.join(pth_path, "state_final.pth")

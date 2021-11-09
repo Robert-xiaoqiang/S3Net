@@ -11,7 +11,7 @@ from torch.nn import BCELoss
 from torch.optim import Adam, SGD, lr_scheduler
 from torchvision import transforms
 from torchvision.utils import make_grid
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from loss.CEL import CEL
 from utils.imgs.create_loader_imgs import create_loader
@@ -192,9 +192,9 @@ class Solver():
             elif self.args['test_without_metrics']:
                 construct_print('Test without evaluation, output nothing')
                 self.test_without_metrics(save_pre=self.save_pre)                
-            elif self.args['test_individual_metrics']:
-                construct_print('Test with individual metrics for failure case analysis')
-                self.test_individual_metrics(save_pre=self.save_pre)
+            elif self.args['test_inference_time']:
+                construct_print('Test the inference time with dummy input')
+                self.test_inference_time()
             else:
                 results = self.test(save_pre=self.save_pre)
                 msg = (f"Results on the testset({data_name}:'{data_path}'): {results}")
@@ -342,52 +342,33 @@ class Solver():
                     oimg_path = osp.join(self.save_path, in_names[item_id] + ".png")
                     out_img.save(oimg_path)
 
-    def test_individual_metrics(self, save_pre):
-        if self.only_test:
-            self.resume_checkpoint(load_path=self.pth_path, mode='onlynet')
-        self.net.eval()
-        
-        maes = { }
-        loader = self.te_loader
-        
-        tqdm_iter = tqdm(enumerate(loader), total=len(loader), leave=False)
-        for test_batch_id, test_data in tqdm_iter:
-            tqdm_iter.set_description(f"{self.model_name}: te=>{test_batch_id + 1}")
+    def test_inference_time(self):
+        batch_size = self.args['batch_size']
+        dummy_rgb = torch.rand(batch_size, 3, 256, 256).to(self.dev)
+        dummy_depth = torch.rand(batch_size, 1, 256, 256).to(self.dev)
+
+        for _ in range(10):
             with torch.no_grad():
-                in_imgs, in_depths, in_mask_paths, in_names = test_data
-                in_imgs = in_imgs.to(self.dev, non_blocking=True)
-                in_depths = in_depths.to(self.dev, non_blocking=True)
-                outputs = self.net(in_imgs, in_depths)
-            
-            # process MTL output
-            if isinstance(outputs, (list, tuple)):
-                outputs = outputs[0]
+                _ = self.net(dummy_rgb, dummy_depth)
 
-            outputs_np = outputs.cpu().detach()
+        starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+        repetitions = 4
+        timing = np.zeros(repetitions)
+        for i in trange(repetitions):
+            with torch.no_grad():
+                starter.record()
+                _  = self.net(dummy_rgb, dummy_depth)
+                ender.record()
 
-            for item_id, out_item in enumerate(outputs_np):
-                gimg_path = osp.join(in_mask_paths[item_id])
-                ###########################################
-                gt_img = Image.open(gimg_path).convert("L") # be careful
-                ###########################################
-                out_img = self.to_pil(out_item).resize(gt_img.size)
-                
-                if save_pre:
-                    oimg_path = osp.join(self.save_path, in_names[item_id] + ".png")
-                    out_img.save(oimg_path)
-                
-                gt_img = np.asarray(gt_img)
-                out_img = np.array(out_img)
-                ps, rs, mae, meanf = cal_pr_mae_meanf(out_img, gt_img)
+                torch.cuda.synchronize()
+                curr_time = starter.elapsed_time(ender)
+                timing[i] = curr_time / float(batch_size)
 
-                key = in_names[item_id]
-                maes[key] = mae
-
-        with open(osp.join(self.save_path, 'individual.json'), 'w') as f:
-            json.dump(maes, f, indent = 4)
+        mean_timing, std_timing = np.mean(timing), np.std(timing)
+        fps = int(1000 / mean_timing)
+        pytorch_total_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+        construct_print('model size: {}, fps: {}, mean timing: {:.4f}, std timing: {:.4f}'.format(pytorch_total_params, fps, mean_timing, std_timing))
         
-        return
-
     def make_scheduler(self):
         total_num = self.iter_num if self.args['sche_usebatch'] else self.end_epoch
         if self.args["lr_type"] == "poly":
