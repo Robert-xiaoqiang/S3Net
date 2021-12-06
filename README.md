@@ -1,6 +1,6 @@
 # S$^3$Net: Self-supervised Self-ensembling Network for Semi-supervised RGB-D Salient Object Detection
 
-- This repository is the official implementation of [the paper](http://dpfan.net/d3netbenchmark/).
+- This repository is the official implementation of [the paper](https://ieeexplore.ieee.org/document/9623466).
 
 
 ![](demo/pipeline.png)
@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ## Datasets
 
-- download from this [link]().
+- download from this [link](http://dpfan.net/d3netbenchmark/).
 
 ## Train
 
