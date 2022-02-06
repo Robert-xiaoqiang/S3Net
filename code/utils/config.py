@@ -78,13 +78,13 @@ arg_config = {
             # 'rgbd135': rgbd135_path,
             # 'stereo': stereo_path,
             # 'lfsd': lfsd_path
-            # 'NJUD': njud_path,
-            # 'NLPR': nlpr_path,
+            'NJUD': njud_path,
+            'NLPR': nlpr_path,
             'SIP': sip_path,
             'RGBD135': rgbd135_path,
             'STERE': stereo_path,
             'LFSD': lfsd_path,
-            # 'DUT-RGBD': dut_path
+            'DUT-RGBD': dut_path
         },
     },
     'tb_update': 10,  # >0 则使用tensorboard
