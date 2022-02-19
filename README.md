@@ -29,26 +29,26 @@ pip install -r requirements.txt
 - Supervised Baseline
 ```bash
 python code/main.py
+# which will invoke the trainer of `code/utils/solver.py`.
 ```
-- which will invoke the trainer of `code/utils/solver.py`.
 
 - Semi-supervised Baseline (Vanilla Mean Teacher Framework)
 ```bash
 python code/main_mt.py
+# which will invoke the trainer of `code/utils/solver_mt.py`.
 ```
-- which will invoke the trainer of `code/utils/solver_mt.py`.
 
 - Supervised Baseline with Rotation Pretext Learning (Multi-task Learning)
 ```bash
 python code/main_ss.py
+# which will invoke the trainer of `code/utils/solver_ss.py`.
 ```
-- which will invoke the trainer of `code/utils/solver_ss.py`.
 
 - Semi-supervised Baseline with Rotation Pretext Learning (**our whole S$^3$Net**)
 ```bash
 python code/main_ss_mt.py
+# which will invoke the trainer of `code/utils/solver_ss_mt.py`.
 ```
-- which will invoke the trainer of `code/utils/solver_ss_mt.py`.
 
 ## Test
 
