@@ -21,7 +21,7 @@ pip install -r requirements.txt
 - download all the benchmark datasets of RGB-D saliency from this [link](http://dpfan.net/d3netbenchmark/).
 - `unzip` them into the same directory.
 - configure the `train/test_datasets_root` items of `code/utils/config.py` using the above directory.   
-- download the unlabeled RGB-D datasets from SUNRGBD 3D benchmark [link](https://rgbd.cs.princeton.edu/) and discard its semantic labels.
+- download the unlabeled RGB-D datasets from [SUNRGBD](https://rgbd.cs.princeton.edu/) 3D benchmark and discard its semantic labels.
 
 ## Train
 - configure the `summary_key` item of `code/utils/config.py` for a new experimental run and execute the following scripts.
