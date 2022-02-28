@@ -5,6 +5,9 @@
 
 ![](demo/pipeline.png)
 
+## Abstract
+
+RGB-D salient object detection aims to detect visually distinctive objects or regions from a pair of the RGB image and the depth image. State-of-the-art RGB-D saliency detectors are mainly based on convolutional neural networks but almost suffer from an intrinsic limitation relying on the labeled data, thus degrading detection accuracy in complex cases. In this work, we present a self-supervised self-ensembling network (S 3 Net) for semi-supervised RGB-D salient object detection by leveraging the unlabeled data and exploring a self-supervised learning mechanism. To be specific, we first build a self-guided convolutional neural network (SG-CNN) as a baseline model by developing a series of three-layer cross-model feature fusion (TCF) modules to leverage complementary information among depth and RGB modalities and formulating an auxiliary task that predicts a self-supervised image rotation angle. After that, to further explore the knowledge from unlabeled data, we assign SG-CNN to a student network and a teacher network, and encourage the saliency predictions and self-supervised rotation predictions from these two networks to be consistent on the unlabeled data. Experimental results on seven widely-used benchmark datasets demonstrate that our network quantitatively and qualitatively outperforms the state-of-the-art methods.
 
 ## Our results
 
